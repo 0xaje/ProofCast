@@ -1,21 +1,44 @@
 import { COOKIE_NAME } from "@shared/const";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDreamDexSnapshot } from "./dreamdex";
+import { getDb } from "./db";
+import {
+  createDecisionReceipt,
+  getDecisionReceipt,
+  listDecisionReceipts,
+} from "./receipts";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+
+export const receiptInputSchema = z.object({
+  marketId: z.string().trim().min(1).max(128),
+  direction: z.enum(["UP", "DOWN"]),
+  probabilityBps: z.number().int().min(100).max(9_900),
+  confidence: z.enum(["LOW", "MEDIUM", "HIGH"]),
+  thesis: z.string().trim().min(1).max(2_000),
+  counterThesis: z.string().trim().min(1).max(2_000),
+});
+
+function receiptError(error: unknown): TRPCError {
+  const message = error instanceof Error ? error.message : "Unable to create Decision Receipt";
+  const isClientError = [
+    "Selected market was not present",
+    "A fresh verified market snapshot is required",
+    "A receipt can only be committed",
+  ].some(prefix => message.startsWith(prefix));
+  return new TRPCError({ code: isClientError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message });
+}
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
 
@@ -26,11 +49,43 @@ export const appRouter = router({
       .query(({ input }) => getDreamDexSnapshot(input?.limit ?? 3)),
   }),
 
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  receipts: router({
+    create: protectedProcedure.input(receiptInputSchema).mutation(async ({ ctx, input }) => {
+      try {
+        const snapshot = await getDreamDexSnapshot(6);
+        return await createDecisionReceipt(ctx.user.id, input, snapshot);
+      } catch (error) {
+        throw receiptError(error);
+      }
+    }),
+    listMine: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        try {
+          return await listDecisionReceipts(ctx.user.id, input?.limit ?? 25);
+        } catch (error) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: error instanceof Error ? error.message : "Unable to list Decision Receipts",
+          });
+        }
+      }),
+    getMineById: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        try {
+          const receipt = await getDecisionReceipt(ctx.user.id, input.id);
+          if (!receipt) throw new TRPCError({ code: "NOT_FOUND", message: "Decision Receipt not found" });
+          return receipt;
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: error instanceof Error ? error.message : "Unable to read Decision Receipt",
+          });
+        }
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

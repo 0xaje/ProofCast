@@ -150,3 +150,11 @@
 - [x] Inventory the present frontend, backend, live-data, persistence, security, testing, and documentation state.
 - [x] Assess product completeness and technical readiness against Proofcast’s accountable forecasting thesis.
 - [x] Produce a prioritized, milestone-based roadmap identifying what to build next and what remains intentionally out of scope in `docs/product-roadmap-assessment.md`.
+
+## Decision Receipt v1 backend
+
+- [x] Design the immutable forecast, server-captured market snapshot, and Decision Receipt schema with user ownership and integrity constraints.
+- [x] Generate and apply the database migration, then verify the live schema.
+- [x] Add database helpers and protected tRPC procedures for receipt creation, listing, and detail retrieval.
+- [x] Add validation, owner scoping, transaction-boundary safeguards, and protected API tests for the Decision Receipt workflow.
+- [x] Run the full quality suite: 12 tests passed, TypeScript check passed, production build passed, and database schema verification passed; checkpoint and frontend wiring remain as the next handoff.
