@@ -72,3 +72,6 @@ The interface uses representative static snapshots only as clearly labeled demo 
 - Every route, including 404 and empty/error states, inherits the Signal Room shell: graphite background, Proofcast mark, restrained semantic color, and operational status language.
 - The Proofcast proof-seal mark and angular wordmark appear in the primary orientation area on every page.
 - Error-state copy uses accountable system status language, such as: “No decision record exists for this path.”
+- The rail, proof seal, wordmark, workspace orientation, and snapshot state are mandatory on every product route before page-specific content.
+- Every primary view uses an operator-surface layout with a dominant analysis area and a narrower evidence or status instrument where the content permits.
+- Market / EventForge / You probability bands are recurring Proofcast instruments in the Command Center, Market Decision, and Decision Receipt.
