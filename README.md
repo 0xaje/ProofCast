@@ -64,6 +64,7 @@ server/
   *.test.ts             Server and source-aware-motion tests
 drizzle/                Database schema and future migrations
 .github/workflows/      CI workflow
+docs/                   Contributor-facing environment configuration guidance
 ```
 
 ## Local setup
@@ -77,11 +78,10 @@ git clone https://github.com/0xaje/ProofCast.git
 cd ProofCast
 corepack enable
 pnpm install --frozen-lockfile
-cp .env.example .env
 pnpm dev
 ```
 
-The development server prints the local address when it starts. Open that address and begin at `/`.
+The current read-only demo requires no wallet key or trading credential. If your standalone contribution requires local authentication, persistence, or platform-service configuration, follow the safe [environment configuration template](docs/environment-template.md) before starting the server. The development server prints the local address when it starts; open that address and begin at `/`.
 
 ## Live demo walkthrough
 
@@ -107,7 +107,7 @@ pnpm build
 
 ## Environment configuration
 
-Copy `.env.example` to `.env` for local work. Never commit `.env` files, credentials, wallet keys, session secrets, database passwords, or hosted-service tokens. The current DreamDEX read-only service is configured around public network endpoints and does not require a wallet private key.
+Use the public [environment configuration template](docs/environment-template.md) to determine whether a local contribution needs configuration and which values are safe to set. Never commit `.env` files, credentials, wallet keys, session secrets, database passwords, or hosted-service tokens. The current DreamDEX read-only service is configured around public network endpoints and does not require a wallet private key.
 
 ## License
 

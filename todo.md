@@ -135,6 +135,12 @@
 
 - [x] Audit current package scripts, runtime configuration, and public-repository files for accurate contribution guidance.
 - [x] Write a comprehensive README covering Proofcast’s thesis, architecture, local setup, live-demo instructions, safety boundaries, and contribution workflow.
-- [ ] Add an open-source license and a safe `.env.example` file that contains only non-secret configuration names and instructions: the MIT license is added and safe variable guidance is documented in the README, but the managed project currently prevents writing a raw `.env.example` file.
+- [x] Add an open-source license and a safe environment configuration template containing only non-secret configuration names and instructions: the MIT license is added, and the approved `docs/environment-template.md` replacement documents safe local values without exposing a raw environment file.
 - [x] Add GitHub Actions CI to install dependencies, run tests, typecheck, and build on pushes and pull requests.
 - [x] Validate the new repository foundation locally, publish it to public `main`, and verify the remote commit: tests, typecheck, and build passed; public `main` matches `f305a77`.
+
+## Safe public environment-template replacement
+
+- [x] Add `docs/environment-template.md` as the approved non-secret contribution configuration template, with precise variable descriptions and local setup instructions.
+- [x] Link the public configuration template from the README and replace the earlier raw `.env.example` reference.
+- [x] Revalidate the completed public contribution foundation: documentation linkage passed, as did tests, TypeScript check, and production build; checkpoint, commit, and publication are next.
