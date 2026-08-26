@@ -42,5 +42,11 @@ jobs:
       - name: Run TypeScript check
         run: pnpm check
 
+      - name: Install Chromium for browser tests
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run browser tests
+        run: pnpm test:e2e
+
       - name: Build production bundle
         run: pnpm build
