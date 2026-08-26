@@ -110,3 +110,16 @@
 - [x] Capture post-change mobile views and confirm reduced-motion safeguards remain in the shared stylesheet.
 - [x] Persist standalone interaction-motion evidence for shared panels, buttons, navigation, and reduced-motion behavior.
 - [x] Save and record the finalized interaction-polish checkpoint: `db69b00d`.
+
+## Source-aware comparison animation
+
+- [x] Identify the comparison-band source fields and local forecast state that should trigger bar motion: verified `asOf` snapshot values and the local forecast state.
+- [x] Animate Market and EventForge bars only after a new verified source snapshot changes their displayed values.
+- [x] Animate the You bar only after an intentional local forecast adjustment, while preserving reduced-motion behavior.
+- [x] Validate source-aware motion behavior, typecheck, test, build, and prepare the refinement checkpoint.
+
+## Explicit comparison animation gating
+
+- [x] Key Market and EventForge bar animation to a verified snapshot timestamp plus a changed displayed source value.
+- [x] Key You bar animation to an intentional local forecast-input revision only.
+- [x] Add unit coverage for the animation-trigger decision logic and prepare the validated refinement checkpoint.
