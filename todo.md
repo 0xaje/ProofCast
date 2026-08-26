@@ -127,6 +127,6 @@
 ## Public GitHub publication
 
 - [x] Inspect the local Git state and the target `0xaje/ProofCast` repository’s branch and history: local `main` is at `345a7f2`; the public target is an empty repository.
-- [ ] Configure the target public remote without losing the latest Proofcast project history.
-- [ ] Push the latest complete Proofcast codebase to the target public repository.
-- [ ] Verify the public repository contains the current project baseline and report the result.
+- [x] Configure the target public remote without losing the latest Proofcast project history.
+- [x] Push the latest complete Proofcast codebase to the target public repository.
+- [x] Verify the public repository contains the current project baseline and report the result: public `main` matches local commit `926d066`.
