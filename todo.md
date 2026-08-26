@@ -109,4 +109,4 @@
 - [x] Document the shared panel, button, navigation, and evidence-instrument motion coverage.
 - [x] Capture post-change mobile views and confirm reduced-motion safeguards remain in the shared stylesheet.
 - [x] Persist standalone interaction-motion evidence for shared panels, buttons, navigation, and reduced-motion behavior.
-- [ ] Save and record the finalized interaction-polish checkpoint.
+- [x] Save and record the finalized interaction-polish checkpoint: `db69b00d`.
