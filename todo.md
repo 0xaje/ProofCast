@@ -144,3 +144,9 @@
 - [x] Add `docs/environment-template.md` as the approved non-secret contribution configuration template, with precise variable descriptions and local setup instructions.
 - [x] Link the public configuration template from the README and replace the earlier raw `.env.example` reference.
 - [x] Revalidate the completed public contribution foundation: documentation linkage passed, as did tests, TypeScript check, and production build; checkpoint, commit, and publication are next.
+
+## Product and engineering roadmap assessment
+
+- [x] Inventory the present frontend, backend, live-data, persistence, security, testing, and documentation state.
+- [x] Assess product completeness and technical readiness against Proofcast’s accountable forecasting thesis.
+- [x] Produce a prioritized, milestone-based roadmap identifying what to build next and what remains intentionally out of scope in `docs/product-roadmap-assessment.md`.
