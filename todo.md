@@ -97,3 +97,16 @@
 - [x] Rebuild Market Decision around a main commitment surface, a persistent comparison instrument, and a distinct evidence column.
 - [x] Rebuild Proof Profile around an editorial receipt form and structured accountable empty states.
 - [x] Re-verify the persistent Proof Instrument rail and unified routes after the route-level redesign.
+
+## Proof Instrument interaction polish
+
+- [x] Audit shared Carbon evidence panels, primary controls, navigation items, and evidence instruments for consistent hover and focus treatment.
+- [x] Add restrained transform, border, shadow, and color transitions to interactive panels and buttons.
+- [x] Verify motion behavior and reduced-motion support across desktop and mobile, then typecheck, build, and prepare the polish checkpoint.
+
+## Interaction validation evidence
+
+- [x] Document the shared panel, button, navigation, and evidence-instrument motion coverage.
+- [x] Capture post-change mobile views and confirm reduced-motion safeguards remain in the shared stylesheet.
+- [x] Persist standalone interaction-motion evidence for shared panels, buttons, navigation, and reduced-motion behavior.
+- [ ] Save and record the finalized interaction-polish checkpoint.
