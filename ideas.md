@@ -92,3 +92,19 @@ The Signal Room is now deliberately lighter without becoming a generic blue SaaS
 | Secondary text | `#70655E` | Explanations, labels, and context |
 
 This palette keeps **semantic meaning** stable: oxide signals verified attention and primary action, aubergine marks model interpretation, ochre is reserved for caution, and plum anchors the operator workspace. The visual identity should remain warm-mineral and compositional, never revert to a standard navy SaaS background or a paper-dominant workspace.
+
+## Palette Correction: Universe Signal Room
+
+The Mineral Signal palette was retired because its lilac and plum balance read too soft for Proofcast’s prediction-intelligence role. The corrected direction is a **Universe Signal Room**: a black-violet cosmic foundation that is not conventional navy fintech, layered with ultraviolet analytical depth and an aurora-teal signal used only for verified data and decisive actions.
+
+| Semantic role | Color | Intended use |
+|---|---:|---|
+| Cosmic Ink | `#100C19` | Page canvas and atmospheric void |
+| Nebula Surface | `#1B1628` | Evidence cards, market panels, and order-book surfaces |
+| Orbit Rail | `#09070E` | Persistent navigation and operator orientation |
+| Starlight | `#F2F0E8` | Display typography and high-priority values |
+| Aurora Signal | `#58D6C2` | Verified live data and primary actions |
+| Ultraviolet Analysis | `#9B8CFF` | EventForge, comparative reasoning, and model cues |
+| Comet Amber | `#F3B768` | Warning, stale state, and execution caution |
+
+This variation should feel like a calm astronomical observation instrument: deep, neutral, forward-looking, and precise—not feminine, not flashy, and not another blue exchange dashboard.

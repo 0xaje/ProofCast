@@ -51,3 +51,9 @@
 - [x] Apply necessary route-specific contrast refinements: verified the shared semantic treatment keeps each route readable without additional page-only overrides.
 - [x] Record loaded-state evidence for the market cards, probability comparison, order book, status chips, and empty-state surfaces on the final palette.
 - [x] Persist standalone final palette evidence for loaded market and Proof Profile empty-state surfaces.
+
+## Universe palette correction
+
+- [x] Define a neutral, prediction-oriented Universe palette with cosmic ink, ultraviolet, aurora teal, starlight, and amber semantic roles.
+- [x] Replace the Mineral Signal shell tokens and visual treatments with the Universe palette without altering product layout or data behavior.
+- [x] Verify the Universe palette across desktop and mobile Signal Room routes, then typecheck, build, and prepare the corrected design checkpoint.

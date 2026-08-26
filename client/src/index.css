@@ -1,4 +1,4 @@
-/* Proofcast / Mineral Signal Room: lilac mineral canvas, plum orientation rail, oxide action, aubergine analysis, and ochre caution. */
+/* Proofcast / Universe Signal Room: cosmic ink, aurora teal, ultraviolet analysis, starlight type, and comet amber caution. */
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -20,87 +20,88 @@
 }
 
 :root {
-  --background: oklch(0.91 0.025 325);
-  --foreground: oklch(0.25 0.04 325);
-  --card: oklch(0.98 0.012 80);
-  --card-foreground: oklch(0.25 0.04 325);
-  --border: oklch(0.44 0.025 55 / 18%);
-  --input: oklch(0.44 0.025 55 / 18%);
-  --ring: oklch(0.52 0.08 25);
-  --primary: oklch(0.55 0.08 25);
-  --primary-foreground: oklch(0.98 0.02 85);
+  --background: oklch(0.12 0.025 300);
+  --foreground: oklch(0.95 0.012 92);
+  --card: oklch(0.18 0.03 300);
+  --card-foreground: oklch(0.95 0.012 92);
+  --border: oklch(0.94 0.01 90 / 13%);
+  --input: oklch(0.94 0.01 90 / 14%);
+  --ring: oklch(0.78 0.12 180);
+  --primary: oklch(0.78 0.12 180);
+  --primary-foreground: oklch(0.12 0.025 180);
 }
 
 * { border-color: var(--border); }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: #e8e0e8; color: #2d2330; font-family: "IBM Plex Sans", sans-serif; font-feature-settings: "cv11" 1, "ss01" 1; }
+body { margin: 0; background: #100c19; color: #f2f0e8; font-family: "IBM Plex Sans", sans-serif; font-feature-settings: "cv11" 1, "ss01" 1; }
 button, input { font: inherit; }
 button { cursor: pointer; }
 .font-display { font-family: "Space Grotesk", sans-serif; }
 .font-mono { font-variant-numeric: tabular-nums; }
-::selection { background: #d79273; color: #2d2330; }
+::selection { background: #58d6c2; color: #071311; }
 
-/* Named palette utilities are available for new route work. Existing surfaces are mapped below only within .pc-shell while the Signal Room component library is progressively tokenised. */
+/* Semantic Universe palette: intentionally black-violet rather than common navy fintech. */
 .pc-shell {
-  --pc-canvas: #e8e0e8;
-  --pc-surface: #fffaf4;
-  --pc-ink: #2d2330;
-  --pc-muted: #70655e;
-  --pc-line: rgba(70, 51, 41, 0.16);
-  --pc-rail: #38223a;
-  --pc-rail-ink: #fff7ef;
-  --pc-oxide: #9c5148;
-  --pc-oxide-soft: rgba(164, 81, 71, 0.13);
-  --pc-aubergine: #704464;
-  --pc-aubergine-soft: rgba(116, 76, 107, 0.14);
-  --pc-ochre: #9d6a31;
-  --pc-ochre-soft: rgba(177, 120, 57, 0.14);
+  --pc-canvas: #100c19;
+  --pc-surface: #1b1628;
+  --pc-surface-raised: #241d34;
+  --pc-ink: #f2f0e8;
+  --pc-muted: #aaa4b8;
+  --pc-line: rgba(242, 240, 232, 0.12);
+  --pc-rail: #09070e;
+  --pc-rail-ink: #f7f3ea;
+  --pc-aurora: #58d6c2;
+  --pc-aurora-soft: rgba(88, 214, 194, 0.12);
+  --pc-violet: #9b8cff;
+  --pc-violet-soft: rgba(155, 140, 255, 0.14);
+  --pc-amber: #f3b768;
+  --pc-amber-soft: rgba(243, 183, 104, 0.14);
   background: var(--pc-canvas);
   color: var(--pc-ink);
 }
 
 .pc-surface { background: var(--pc-surface); border-color: var(--pc-line); }
 .pc-rail { background: var(--pc-rail); color: var(--pc-rail-ink); }
-.pc-signal { color: var(--pc-oxide); }
-.pc-model { color: var(--pc-aubergine); }
-.pc-watch { color: var(--pc-ochre); }
-.pc-action { background: var(--pc-oxide); color: var(--pc-surface); }
+.pc-signal { color: var(--pc-aurora); }
+.pc-model { color: var(--pc-violet); }
+.pc-watch { color: var(--pc-amber); }
+.pc-action { background: var(--pc-aurora); color: #071311; }
 
-/* Compatibility mapping: keeps the original rail-first component architecture intact while translating its prior graphite/citrine literals into the named system above. */
+/* Scoped compatibility mapping translates the existing Signal Room literal utilities to the Universe tokens while preserving all product behavior. */
 .pc-shell [class*="bg-[#080b10]"], .pc-shell [class*="bg-[#0a0e14]"], .pc-shell [class*="bg-[#0c1118]"] { background-color: var(--pc-canvas) !important; }
 .pc-shell [class*="bg-[#10151d]"], .pc-shell [class*="bg-[#11181a]"] { background-color: var(--pc-surface) !important; }
-.pc-shell [class*="bg-[#202937]"], .pc-shell [class*="bg-[#263244]"], .pc-shell [class*="bg-[#34322d]"] { background-color: #e1d4df !important; }
-.pc-shell [class*="bg-[#58617e]"] { background-color: #b58b9f !important; }
-.pc-shell [class*="bg-black"] { background-color: rgba(45, 35, 48, 0.45) !important; }
+.pc-shell [class*="bg-[#202937]"], .pc-shell [class*="bg-[#263244]"], .pc-shell [class*="bg-[#34322d]"] { background-color: var(--pc-surface-raised) !important; }
+.pc-shell [class*="bg-[#58617e]"] { background-color: #5d5682 !important; }
+.pc-shell [class*="bg-black"] { background-color: rgba(5, 4, 9, 0.68) !important; }
 
-.pc-shell [class*="bg-[#d7f36b]"] { background-color: var(--pc-oxide-soft) !important; }
-.pc-shell :is(button, a)[class*="bg-[#d7f36b]"] { background-color: var(--pc-oxide) !important; }
-.pc-shell [class*="bg-[#8ba6ff]"] { background-color: var(--pc-aubergine-soft) !important; }
-.pc-shell [class*="bg-[#e9b65b]"] { background-color: var(--pc-ochre-soft) !important; }
+.pc-shell [class*="bg-[#d7f36b]"] { background-color: var(--pc-aurora-soft) !important; }
+.pc-shell :is(button, a)[class*="bg-[#d7f36b]"] { background-color: var(--pc-aurora) !important; }
+.pc-shell [class*="bg-[#8ba6ff]"] { background-color: var(--pc-violet-soft) !important; }
+.pc-shell [class*="bg-[#e9b65b]"] { background-color: var(--pc-amber-soft) !important; }
 
 .pc-shell [class*="text-white"], .pc-shell [class*="text-[#f5f6f2]"], .pc-shell [class*="text-[#f8f8f7]"] { color: var(--pc-ink) !important; }
 .pc-shell [class*="text-[#"] { color: var(--pc-muted) !important; }
-.pc-shell [class*="text-[#d7f36b]"] { color: var(--pc-oxide) !important; }
-.pc-shell [class*="text-[#8ba6ff]"], .pc-shell [class*="text-[#9db5ff]"], .pc-shell [class*="text-[#a5baff]"] { color: var(--pc-aubergine) !important; }
-.pc-shell [class*="text-[#e9b65b]"] { color: var(--pc-ochre) !important; }
-.pc-shell :is(button, a)[class*="bg-[#d7f36b]"][class*="text-[#10140d]"] { color: var(--pc-surface) !important; }
+.pc-shell [class*="text-[#d7f36b]"] { color: var(--pc-aurora) !important; }
+.pc-shell [class*="text-[#8ba6ff]"], .pc-shell [class*="text-[#9db5ff]"], .pc-shell [class*="text-[#a5baff]"] { color: var(--pc-violet) !important; }
+.pc-shell [class*="text-[#e9b65b]"] { color: var(--pc-amber) !important; }
+.pc-shell :is(button, a)[class*="bg-[#d7f36b]"][class*="text-[#10140d]"] { color: #071311 !important; }
 
 .pc-shell [class*="border-white"], .pc-shell [class*="border-[#"] { border-color: var(--pc-line) !important; }
-.pc-shell [class*="border-[#d7f36b]"] { border-color: rgba(156, 81, 72, 0.34) !important; }
-.pc-shell [class*="border-[#8ba6ff]"] { border-color: rgba(112, 68, 100, 0.30) !important; }
-.pc-shell [class*="border-[#e9b65b]"] { border-color: rgba(157, 106, 49, 0.30) !important; }
-.pc-shell [class*="shadow-black"] { --tw-shadow-color: rgba(83, 59, 42, 0.12) !important; }
-.pc-shell [class*="radial-gradient"] { background-image: radial-gradient(circle at 78% 0%, rgba(165, 81, 71, 0.20), transparent 30%), radial-gradient(circle at 20% 100%, rgba(101, 63, 96, 0.14), transparent 30%), linear-gradient(90deg, rgba(90, 55, 77, 0.06) 1px, transparent 1px) !important; }
-.pc-shell [class*="accent-[#d7f36b]"] { accent-color: var(--pc-oxide) !important; }
+.pc-shell [class*="border-[#d7f36b]"] { border-color: rgba(88, 214, 194, 0.35) !important; }
+.pc-shell [class*="border-[#8ba6ff]"] { border-color: rgba(155, 140, 255, 0.34) !important; }
+.pc-shell [class*="border-[#e9b65b]"] { border-color: rgba(243, 183, 104, 0.34) !important; }
+.pc-shell [class*="shadow-black"] { --tw-shadow-color: rgba(0, 0, 0, 0.38) !important; }
+.pc-shell [class*="radial-gradient"] { background-image: radial-gradient(circle at 76% 4%, rgba(155, 140, 255, 0.18), transparent 30%), radial-gradient(circle at 18% 96%, rgba(88, 214, 194, 0.10), transparent 29%), linear-gradient(90deg, rgba(242, 240, 232, 0.028) 1px, transparent 1px) !important; }
+.pc-shell [class*="accent-[#d7f36b]"] { accent-color: var(--pc-aurora) !important; }
 
-/* The plum rail is the permanent Proofcast orientation anchor; it keeps the lighter canvas product-specific. */
-.pc-shell aside[class*="fixed inset-y-0"], .pc-shell .fixed.inset-y-0 > aside { background-color: var(--pc-rail) !important; border-color: rgba(255, 250, 244, 0.14) !important; }
+/* The black-violet rail is the permanent orientation anchor; teal indicates verified attention, never speculation. */
+.pc-shell aside[class*="fixed inset-y-0"], .pc-shell .fixed.inset-y-0 > aside { background-color: var(--pc-rail) !important; border-color: rgba(242, 240, 232, 0.12) !important; }
 .pc-shell aside[class*="fixed inset-y-0"] [class*="text-white"], .pc-shell .fixed.inset-y-0 > aside [class*="text-white"] { color: var(--pc-rail-ink) !important; }
-.pc-shell aside[class*="fixed inset-y-0"] [class*="text-[#"], .pc-shell .fixed.inset-y-0 > aside [class*="text-[#"] { color: #d8c5d4 !important; }
-.pc-shell aside[class*="fixed inset-y-0"] [class*="text-[#d7f36b]"], .pc-shell .fixed.inset-y-0 > aside [class*="text-[#d7f36b]"] { color: #ef9b77 !important; }
-.pc-shell aside[class*="fixed inset-y-0"] [class*="bg-[#d7f36b]"], .pc-shell .fixed.inset-y-0 > aside [class*="bg-[#d7f36b]"] { background-color: rgba(239, 155, 119, 0.13) !important; }
-.pc-shell aside[class*="fixed inset-y-0"] button[class*="bg-[#d7f36b]"], .pc-shell .fixed.inset-y-0 > aside button[class*="bg-[#d7f36b]"] { background-color: #e88e6d !important; color: var(--pc-rail) !important; }
-.pc-shell header[class*="sticky top-0"] { background-color: rgba(255, 250, 244, 0.86) !important; }
+.pc-shell aside[class*="fixed inset-y-0"] [class*="text-[#"], .pc-shell .fixed.inset-y-0 > aside [class*="text-[#"] { color: #b9b2c4 !important; }
+.pc-shell aside[class*="fixed inset-y-0"] [class*="text-[#d7f36b]"], .pc-shell .fixed.inset-y-0 > aside [class*="text-[#d7f36b]"] { color: var(--pc-aurora) !important; }
+.pc-shell aside[class*="fixed inset-y-0"] [class*="bg-[#d7f36b]"], .pc-shell .fixed.inset-y-0 > aside [class*="bg-[#d7f36b]"] { background-color: var(--pc-aurora-soft) !important; }
+.pc-shell aside[class*="fixed inset-y-0"] button[class*="bg-[#d7f36b]"], .pc-shell .fixed.inset-y-0 > aside button[class*="bg-[#d7f36b]"] { background-color: var(--pc-aurora) !important; color: #071311 !important; }
+.pc-shell header[class*="sticky top-0"] { background-color: rgba(16, 12, 25, 0.88) !important; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
