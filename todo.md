@@ -165,6 +165,6 @@
 - [x] Implement Market Decision as a Draft → Review → Commit flow using the protected receipt mutation.
 - [x] Update Proof Profile to load and display the authenticated owner’s receipt ledger with detail inspection.
 - [x] Add browser integration coverage for commit, refresh, and receipt inspection, plus regression checks; the passing Playwright flow mocks the protected API boundary while exercising the real UI.
-- [x] Run the full quality suite: 12 unit tests, Playwright browser integration flow, TypeScript check, production build, and visual route verification passed; checkpoint and report remain for handoff.
+- [x] Run the full quality suite: 12 unit tests, Playwright browser integration flow, authenticated database-backed receipt E2E, TypeScript check, production build, and visual route verification passed.
 
-- [ ] Add a true authenticated database-backed receipt E2E test once a safe isolated test-auth/session strategy is available; keep the current Playwright test as browser integration coverage in the meantime.
+- [x] Add and execute a true authenticated database-backed receipt E2E test with a test-only auth header, test-only DreamDEX fixture, disposable local/CI MySQL service, and migration step; the mocked browser integration test remains available for fast local validation.

@@ -11,7 +11,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "pnpm dev",
+    command: `DATABASE_URL='${process.env.E2E_DATABASE_URL ?? process.env.DATABASE_URL ?? ""}' pnpm run dev:e2e`,
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

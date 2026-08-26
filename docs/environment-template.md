@@ -22,6 +22,17 @@ For the current public Signal Room and Market Decision experience, a normal loca
 | `BUILT_IN_FORGE_API_KEY` | No | Hosted platform service token | Keep in the secure configuration system only. |
 | `VITE_FRONTEND_FORGE_API_URL` | No | Browser-side hosted service endpoint | Leave unset in an ordinary public clone. |
 | `VITE_FRONTEND_FORGE_API_KEY` | No | Browser-side hosted service token | Keep in the secure configuration system only. |
+| `E2E_DATABASE_URL` | Only for database-backed browser tests | Disposable MySQL/MariaDB connection used by Playwright | Use a local or CI-only database; never point this at production. |
+
+## Isolated browser E2E workflow
+
+The real authenticated receipt E2E requires an isolated database and is intentionally skipped when `E2E_DATABASE_URL` is absent. CI provisions a disposable MySQL service, applies the committed Drizzle migration, and runs the test with a test-only auth header and DreamDEX fixture. For local reproduction, point `E2E_DATABASE_URL` at a disposable local database and run:
+
+```bash
+E2E_DATABASE_URL='mysql://user:password@127.0.0.1:3306/proofcast_e2e' pnpm test:e2e e2e/decision-receipt.real.spec.ts
+```
+
+The fixture is guarded by `PROOFCAST_E2E=1`, `PROOFCAST_E2E_FIXTURE=1`, and non-production runtime mode. It is never returned by the production live-data path.
 
 ## Safe standalone workflow
 

@@ -169,7 +169,47 @@ function unavailableSnapshot(message: string): DreamDexSnapshot {
  * Returns bounded, read-only Event Contract snapshots. No account, signer, wallet,
  * approval, order, cancellation, mint, settlement, or redemption capability is created.
  */
+function e2eFixtureSnapshot(): DreamDexSnapshot {
+  const now = Date.now();
+  return {
+    state: "LIVE",
+    asOf: now,
+    ageMs: 0,
+    network: "somnia-mainnet",
+    chainId: somniaMainnet.id,
+    provenance: {
+      indexer: "test-only fixture; not a production source",
+      orderBook: "on-chain binary pool read",
+      method: "official @somnia-chain/markets-sdk (read-only)",
+    },
+    markets: [{
+      marketId: "e2e-market-1",
+      marketAddress: "0xe2e-market",
+      poolAddress: "0xe2e-pool",
+      asset: "BTC",
+      question: "E2E test market resolves after the receipt is committed",
+      indexedStatus: "Trading",
+      marketState: "TRADING",
+      tradingStart: now - 60_000,
+      expiry: now + 600_000,
+      secondsToExpiry: 600,
+      lastPricePercent: 61.25,
+      bestBidPercent: 60.5,
+      bestAskPercent: 62,
+      midPercent: 61.25,
+      spreadBps: 246,
+      yesBids: [{ pricePercent: 60.5, quantity: "12.5" }],
+      yesAsks: [{ pricePercent: 62, quantity: "8" }],
+    }],
+    message: "Test-only fixture snapshot; never used as live product data.",
+  };
+}
+
 export async function getDreamDexSnapshot(limit = 3): Promise<DreamDexSnapshot> {
+  if (process.env.NODE_ENV !== "production" && process.env.PROOFCAST_E2E === "1" && process.env.PROOFCAST_E2E_FIXTURE === "1") {
+    return e2eFixtureSnapshot();
+  }
+
   const exchange = new SomniaMarkets({
     chain: somniaMainnet,
     wsRpcUrl: "wss://api.infra.mainnet.somnia.network/ws",

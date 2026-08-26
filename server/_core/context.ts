@@ -13,7 +13,22 @@ export async function createContext(
 ): Promise<TrpcContext> {
   let user: User | null = null;
 
+  if (process.env.NODE_ENV !== "production" && process.env.PROOFCAST_E2E === "1") {
+    const testOpenId = opts.req.headers["x-proofcast-e2e-user"];
+    if (typeof testOpenId === "string") {
+      const testUser = await import("../db").then(({ getUserByOpenId, upsertUser }) =>
+        getUserByOpenId(testOpenId).then(async existing => {
+          if (existing) return existing;
+          await upsertUser({ openId: testOpenId, name: "E2E Test User", loginMethod: "e2e" });
+          return getUserByOpenId(testOpenId);
+        }),
+      );
+      user = testUser ?? null;
+    }
+  }
+
   try {
+    if (user) return { req: opts.req, res: opts.res, user };
     user = await sdk.authenticateRequest(opts.req);
   } catch (error) {
     // Authentication is optional for public procedures.

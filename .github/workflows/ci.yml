@@ -17,9 +17,24 @@ concurrency:
 
 jobs:
   validate:
-    name: Test, typecheck, and build
+    name: Test, typecheck, browser flow, and build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    env:
+      E2E_DATABASE_URL: mysql://root:root@127.0.0.1:3306/proofcast_test
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: proofcast_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -44,6 +59,11 @@ jobs:
 
       - name: Install Chromium for browser tests
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Migrate isolated E2E database
+        env:
+          DATABASE_URL: ${{ env.E2E_DATABASE_URL }}
+        run: pnpm drizzle-kit migrate
 
       - name: Run browser tests
         run: pnpm test:e2e
