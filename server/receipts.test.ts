@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import type { DreamDexMarketSnapshot, DreamDexSnapshot } from "./dreamdex";
 import { decisionReceipts, forecasts, marketSnapshots } from "../drizzle/schema";
-import { buildMarketSnapshotInsert, createDecisionReceipt, isVerifiedResolution, nextRevisionNumber, pickVerifiedOwnedResolution, preservesOriginalForecast, receiptBelongsToUser, resolutionBelongsToUser, revisionBelongsToUser, verifyResolutionEvidence } from "./receipts";
+import { buildMarketSnapshotInsert, createDecisionReceipt, isVerifiedResolution, nextRevisionNumber, pickVerifiedOwnedResolution, preservesOriginalForecast, receiptBelongsToUser, resolutionBelongsToUser, revisionBelongsToUser, validateEvidenceSourceUrl, verifyResolutionEvidence } from "./receipts";
 import { appRouter, receiptInputSchema, resolutionEvidenceInputSchema, revisionInputSchema } from "./routers";
-import { calculateCalibrationMetrics, scoreVerifiedOutcome } from "./scoring";
+import { calculateCalibrationMetrics, scoreVerifiedOutcome, selectForecastAtResolution } from "./scoring";
 
 const market: DreamDexMarketSnapshot = {
   marketId: "market-1",
@@ -191,7 +191,32 @@ describe("Decision Receipt revision and resolution safeguards", () => {
   });
 });
 
+describe("Resolution-time scoring and evidence sources", () => {
+  it("scores the latest forecast version active when evidence was verified", () => {
+    const originalAt = new Date("2026-01-01T00:00:00.000Z");
+    const revisionAt = new Date("2026-01-02T00:00:00.000Z");
+    const verifiedAt = new Date("2026-01-03T00:00:00.000Z");
+    expect(selectForecastAtResolution({ direction: "UP", probabilityBps: 8_000, committedAt: originalAt } as never, [{ direction: "DOWN", probabilityBps: 3_000, createdAt: revisionAt }], verifiedAt)).toMatchObject({ direction: "DOWN", probabilityBps: 3_000 });
+    expect(selectForecastAtResolution({ direction: "UP", probabilityBps: 8_000, committedAt: originalAt } as never, [{ direction: "DOWN", probabilityBps: 3_000, createdAt: new Date("2026-01-04T00:00:00.000Z") }], verifiedAt)).toMatchObject({ direction: "UP", probabilityBps: 8_000 });
+  });
+
+  it("accepts public HTTPS sources and rejects unsafe or credentialed URLs", () => {
+    expect(validateEvidenceSourceUrl(" https://example.com/outcome ")).toBe("https://example.com/outcome");
+    expect(() => validateEvidenceSourceUrl("http://example.com/outcome")).toThrow("HTTPS");
+    expect(() => validateEvidenceSourceUrl("https://user:pass@example.com/outcome")).toThrow("credentials");
+    expect(() => validateEvidenceSourceUrl("https://localhost/outcome")).toThrow("public HTTPS");
+  });
+});
+
 describe("Verified outcome scoring and calibration", () => {
+  it("builds a chronological trend only from verified scored outcomes", () => {
+    const sample = Array.from({ length: 5 }, (_, index) => scoreVerifiedOutcome(index + 1, { probabilityBps: 5_000 + index * 500, direction: "UP" }, { outcome: "YES", verificationStatus: "VERIFIED" }));
+    const metrics = calculateCalibrationMetrics(sample.map((item, index) => ({ ...item!, resolvedAt: new Date(Date.UTC(2026, 0, index + 1)) })), 0);
+    expect(metrics.calibrationStatus).toBe("READY");
+    expect(metrics.trend).toHaveLength(5);
+    expect(metrics.trend.at(-1)).toMatchObject({ verifiedCount: 5, directionalAccuracyPct: 100 });
+  });
+
   it("scores only verified non-void outcomes and computes transparent metrics", () => {
     const correct = scoreVerifiedOutcome(11, { probabilityBps: 8_000, direction: "UP" }, { outcome: "YES", verificationStatus: "VERIFIED" });
     const incorrect = scoreVerifiedOutcome(12, { probabilityBps: 8_000, direction: "UP" }, { outcome: "NO", verificationStatus: "VERIFIED" });
@@ -229,5 +254,6 @@ describe("Decision Receipt v1 protected procedures", () => {
     await expect(caller.receipts.submitResolutionEvidence({ receiptId: 1, outcome: "YES", sourceUrl: "https://example.com", evidenceSummary: "evidence" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(caller.receipts.metrics()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(caller.receipts.verifyResolutionEvidence({ resolutionId: 1, status: "VERIFIED" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.receipts.pendingReview()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

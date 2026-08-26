@@ -209,3 +209,12 @@
 
 - [x] Replace the mocked calibration API test with an unmocked protected procedure test using deterministic verified non-void receipt/resolution fixtures and the real aggregation/scoring path.
 - [x] Save a new checkpoint after the final calibration coverage passes; unit tests, TypeScript validation, production build, and verified browser coverage passed.
+
+## Resolution-aware scoring, review queue, and calibration trends
+
+- [x] Audit revision timestamps, resolution evidence, admin procedures, metrics contracts, and Proof Profile layout.
+- [x] Define resolution-time scoring semantics and evidence-source validation rules.
+- [x] Score the forecast revision active when evidence was verified, without rewriting the original commitment.
+- [x] Validate evidence URLs and add an administrator review-queue API with owner-safe review transitions.
+- [x] Build an administrator review queue and a verified-history calibration trend chart with truthful empty states.
+- [x] Add direct scoring, source-validation, API, ownership, and browser coverage; run validation and checkpoint the release.

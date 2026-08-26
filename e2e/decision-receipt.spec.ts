@@ -49,6 +49,7 @@ async function mockReceiptNetwork(page: Page) {
     const response = operations.map(operation => {
       if (operation === "auth.me") return trpcResult({ id: 7, openId: "e2e-user", name: "E2E User", role: "user" });
       if (operation === "dreamdex.snapshot") return trpcResult(snapshot);
+      if (operation === "receipts.metrics") return trpcResult({ verifiedCount: 0, excludedCount: 0, directionalAccuracyPct: null, meanBrierScoreBps: null, calibrationStatus: "INSUFFICIENT_SAMPLE", minimumSampleSize: 5, trend: [], bins: [] });
       if (operation === "receipts.listMine") return trpcResult(receipts);
       if (operation === "receipts.getMineById") return trpcResult(receipts.find(receipt => receipt.id === input.id) ?? null);
       if (operation === "receipts.create") {
@@ -89,6 +90,7 @@ test.describe("Decision Receipt browser flow", () => {
 
     await page.goto("/proof");
     await expect(page.getByTestId("receipt-ledger")).toContainText("Receipt #41");
+    await expect(page.getByTestId("calibration-trend")).toContainText("Trend unlocks after 5 verified outcomes.");
     await page.getByTestId("receipt-row-41").click();
     await expect(page.getByTestId("receipt-detail")).toContainText("Bid support is holding into the trading window.");
 

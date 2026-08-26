@@ -8,6 +8,7 @@ import {
   createForecastRevision,
   getCalibrationMetrics,
   getDecisionReceipt,
+  listPendingResolutionEvidence,
   listDecisionReceipts,
   submitResolutionEvidence,
   verifyResolutionEvidence,
@@ -48,6 +49,7 @@ function receiptError(error: unknown, fallback: string): TRPCError {
     "Decision Receipt not found",
     "Only submitted resolution evidence can be reviewed",
     "Resolution evidence not found",
+    "Evidence source",
   ].some(prefix => message.startsWith(prefix));
   return new TRPCError({ code: isClientError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message });
 }
@@ -105,6 +107,15 @@ export const appRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to calculate calibration metrics" });
       }
     }),
+    pendingReview: adminProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional())
+      .query(async ({ input }) => {
+        try {
+          return await listPendingResolutionEvidence(input?.limit ?? 50);
+        } catch (error) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to load review queue" });
+        }
+      }),
     verifyResolutionEvidence: adminProcedure
       .input(resolutionReviewInputSchema)
       .mutation(async ({ ctx, input }) => {

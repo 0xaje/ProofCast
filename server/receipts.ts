@@ -1,4 +1,9 @@
-import { and, desc, eq } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+} from "drizzle-orm";
 import {
   decisionReceipts,
   forecasts,
@@ -11,7 +16,7 @@ import {
 } from "../drizzle/schema";
 import type { DreamDexMarketSnapshot, DreamDexSnapshot } from "./dreamdex";
 import { getDb } from "./db";
-import { calculateCalibrationMetrics, scoreVerifiedOutcome } from "./scoring";
+import { calculateCalibrationMetrics, scoreVerifiedOutcome, selectForecastAtResolution } from "./scoring";
 
 export type CreateReceiptInput = Pick<
   InsertForecast,
@@ -26,6 +31,17 @@ export type ResolutionEvidenceInput = {
 };
 
 export type ResolutionVerificationStatus = "VERIFIED" | "REJECTED";
+
+export function validateEvidenceSourceUrl(rawUrl: string): string {
+  const url = new URL(rawUrl.trim());
+  if (url.protocol !== "https:") throw new Error("Evidence source must use HTTPS");
+  if (url.username || url.password) throw new Error("Evidence source cannot include credentials");
+  const hostname = url.hostname.toLowerCase();
+  if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname === "127.0.0.1" || hostname === "::1" || hostname.startsWith("10.") || hostname.startsWith("192.168.") || hostname.startsWith("169.254.")) {
+    throw new Error("Evidence source must be a public HTTPS URL");
+  }
+  return url.toString();
+}
 
 export function nextRevisionNumber(revisions: Array<Pick<typeof forecastRevisions.$inferSelect, "revisionNumber">>): number {
   return revisions.reduce((highest, row) => Math.max(highest, row.revisionNumber), 0) + 1;
@@ -43,7 +59,7 @@ export function resolutionBelongsToUser(resolution: Pick<typeof receiptResolutio
   return resolution.userId === userId;
 }
 
-export function pickVerifiedOwnedResolution(userId: number, resolutions: Array<Pick<typeof receiptResolutions.$inferSelect, "userId" | "verificationStatus" | "outcome">>) {
+export function pickVerifiedOwnedResolution(userId: number, resolutions: Array<Pick<typeof receiptResolutions.$inferSelect, "userId" | "verificationStatus" | "outcome" | "verifiedAt" | "createdAt">>) {
   return resolutions.filter(item => resolutionBelongsToUser(item, userId)).find(item => item.verificationStatus === "VERIFIED");
 }
 
@@ -234,13 +250,27 @@ export async function submitResolutionEvidence(userId: number, input: Resolution
     receiptId: input.receiptId,
     userId,
     outcome: input.outcome,
-    sourceUrl: input.sourceUrl,
+    sourceUrl: validateEvidenceSourceUrl(input.sourceUrl),
     evidenceSummary: input.evidenceSummary,
   });
   const id = insertId(result);
   const rows = await db.select().from(receiptResolutions).where(and(eq(receiptResolutions.id, id), eq(receiptResolutions.userId, userId))).limit(1);
   if (!rows[0]) throw new Error("Resolution evidence was created but could not be read back");
   return rows[0];
+}
+
+export async function listPendingResolutionEvidence(limit = 50, database?: ReceiptDatabase) {
+  const db = database ?? await getDb();
+  if (!db) throw new Error("Database is not configured");
+  return db
+    .select({ resolution: receiptResolutions, receipt: decisionReceipts, forecast: forecasts, marketSnapshot: marketSnapshots })
+    .from(receiptResolutions)
+    .innerJoin(decisionReceipts, eq(receiptResolutions.receiptId, decisionReceipts.id))
+    .innerJoin(forecasts, eq(decisionReceipts.forecastId, forecasts.id))
+    .innerJoin(marketSnapshots, eq(decisionReceipts.marketSnapshotId, marketSnapshots.id))
+    .where(eq(receiptResolutions.verificationStatus, "SUBMITTED"))
+    .orderBy(asc(receiptResolutions.createdAt))
+    .limit(limit);
 }
 
 export async function verifyResolutionEvidence(verifierId: number, resolutionId: number, status: ResolutionVerificationStatus, database?: ReceiptDatabase) {
@@ -266,8 +296,15 @@ export async function getCalibrationMetrics(userId: number, database?: ReceiptDa
   for (const row of rows) {
     const timeline = await getReceiptTimeline(userId, row.receipt.id, db);
     const verified = pickVerifiedOwnedResolution(userId, timeline.resolutions);
-    const score = verified ? scoreVerifiedOutcome(row.receipt.id, row.forecast, verified) : null;
-    if (score) scored.push(score);
+    let originalForecast = row.forecast;
+    const firstRevision = timeline.revisions[timeline.revisions.length - 1];
+    if (firstRevision) {
+      const originalRows = await db.select().from(forecasts).where(and(eq(forecasts.id, firstRevision.parentForecastId), eq(forecasts.userId, userId))).limit(1);
+      originalForecast = originalRows[0] ?? originalForecast;
+    }
+    const forecastAtResolution = verified ? selectForecastAtResolution(originalForecast, timeline.revisions, verified.verifiedAt ?? verified.createdAt ?? new Date()) : null;
+    const score = verified && forecastAtResolution ? scoreVerifiedOutcome(row.receipt.id, forecastAtResolution, verified) : null;
+    if (score && verified) scored.push({ ...score, resolvedAt: verified.verifiedAt ?? verified.createdAt ?? new Date() });
     else excludedCount += 1;
   }
 
