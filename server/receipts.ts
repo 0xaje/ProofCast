@@ -2,7 +2,9 @@ import { and, desc, eq } from "drizzle-orm";
 import {
   decisionReceipts,
   forecasts,
+  forecastRevisions,
   marketSnapshots,
+  receiptResolutions,
   type DecisionReceipt,
   type InsertForecast,
   type InsertMarketSnapshot,
@@ -15,12 +17,41 @@ export type CreateReceiptInput = Pick<
   "marketId" | "direction" | "probabilityBps" | "confidence" | "thesis" | "counterThesis"
 >;
 
+export type ResolutionEvidenceInput = {
+  receiptId: number;
+  outcome: "YES" | "NO" | "VOID";
+  sourceUrl: string;
+  evidenceSummary: string;
+};
+
+export type ResolutionVerificationStatus = "VERIFIED" | "REJECTED";
+
+export function nextRevisionNumber(revisions: Array<Pick<typeof forecastRevisions.$inferSelect, "revisionNumber">>): number {
+  return revisions.reduce((highest, row) => Math.max(highest, row.revisionNumber), 0) + 1;
+}
+
+export function isVerifiedResolution(resolution: Pick<typeof receiptResolutions.$inferSelect, "verificationStatus">): boolean {
+  return resolution.verificationStatus === "VERIFIED";
+}
+
+export function revisionBelongsToUser(revision: Pick<typeof forecastRevisions.$inferSelect, "userId">, userId: number): boolean {
+  return revision.userId === userId;
+}
+
+export function resolutionBelongsToUser(resolution: Pick<typeof receiptResolutions.$inferSelect, "userId">, userId: number): boolean {
+  return resolution.userId === userId;
+}
+
+export function preservesOriginalForecast(originalForecastId: number, revision: Pick<typeof forecastRevisions.$inferSelect, "parentForecastId">): boolean {
+  return revision.parentForecastId === originalForecastId;
+}
+
+type ReceiptDatabase = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
 function insertId(result: unknown): number {
   const header = Array.isArray(result) ? result[0] : result;
   const id = Number((header as { insertId?: number | bigint } | undefined)?.insertId);
-  if (!Number.isSafeInteger(id) || id < 1) {
-    throw new Error("Database did not return an insert identifier");
-  }
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error("Database did not return an insert identifier");
   return id;
 }
 
@@ -97,7 +128,17 @@ async function receiptQuery(userId: number, receiptId?: number) {
     .orderBy(desc(decisionReceipts.createdAt));
 }
 
-type ReceiptDatabase = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+async function getReceiptTimeline(userId: number, receiptId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const [revisions, resolutions] = await Promise.all([
+    db.select().from(forecastRevisions).where(and(eq(forecastRevisions.receiptId, receiptId), eq(forecastRevisions.userId, userId))).orderBy(desc(forecastRevisions.revisionNumber)),
+    db.select().from(receiptResolutions).where(and(eq(receiptResolutions.receiptId, receiptId), eq(receiptResolutions.userId, userId))).orderBy(desc(receiptResolutions.createdAt)),
+  ]);
+
+  return { revisions, resolutions };
+}
 
 export async function createDecisionReceipt(
   userId: number,
@@ -107,12 +148,8 @@ export async function createDecisionReceipt(
 ) {
   const market = snapshot.markets.find(item => item.marketId === input.marketId);
   if (!market) throw new Error("Selected market was not present in the verified snapshot");
-  if (snapshot.state !== "LIVE" || snapshot.asOf === null) {
-    throw new Error("A fresh verified market snapshot is required to create a receipt");
-  }
-  if (market.marketState !== "TRADING") {
-    throw new Error("A receipt can only be committed while the selected market is trading");
-  }
+  if (snapshot.state !== "LIVE" || snapshot.asOf === null) throw new Error("A fresh verified market snapshot is required to create a receipt");
+  if (market.marketState !== "TRADING") throw new Error("A receipt can only be committed while the selected market is trading");
 
   const db = database ?? await getDb();
   if (!db) throw new Error("Database is not configured");
@@ -131,6 +168,85 @@ export async function createDecisionReceipt(
   return shapeReceipt(created[0]);
 }
 
+export async function createForecastRevision(
+  userId: number,
+  receiptId: number,
+  input: Omit<CreateReceiptInput, "marketId">,
+  database?: ReceiptDatabase,
+) {
+  const db = database ?? await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  await assertOwnedReceipt(db, userId, receiptId);
+  const result = await db.transaction(async tx => {
+    const currentRows = await tx
+      .select({ receipt: decisionReceipts, forecast: forecasts })
+      .from(decisionReceipts)
+      .innerJoin(forecasts, eq(decisionReceipts.forecastId, forecasts.id))
+      .where(and(eq(decisionReceipts.id, receiptId), eq(decisionReceipts.userId, userId)))
+      .limit(1);
+    const current = currentRows[0];
+    if (!current) throw new Error("Decision Receipt not found");
+
+    const priorRevisions = await tx.select({ revisionNumber: forecastRevisions.revisionNumber }).from(forecastRevisions).where(eq(forecastRevisions.receiptId, receiptId));
+    const revisionNumber = nextRevisionNumber(priorRevisions);
+    const forecastResult = await tx.insert(forecasts).values({ ...input, marketId: current.forecast.marketId, userId });
+    const forecastId = insertId(forecastResult);
+
+    await tx.update(forecasts).set({ status: "REVISED" }).where(and(eq(forecasts.id, current.forecast.id), eq(forecasts.userId, userId)));
+    await tx.insert(forecastRevisions).values({
+      receiptId,
+      userId,
+      parentForecastId: current.forecast.id,
+      revisionNumber,
+      ...input,
+    });
+    await tx.update(decisionReceipts).set({ forecastId, version: current.receipt.version + 1 }).where(and(eq(decisionReceipts.id, receiptId), eq(decisionReceipts.userId, userId)));
+    return forecastId;
+  });
+
+  const updated = await getDecisionReceipt(userId, receiptId);
+  if (!updated) throw new Error(`Receipt revision ${result} was created but could not be read back`);
+  return updated;
+}
+
+async function assertOwnedReceipt(db: ReceiptDatabase, userId: number, receiptId: number) {
+  const rows = await db.select({ receipt: decisionReceipts }).from(decisionReceipts).where(and(eq(decisionReceipts.id, receiptId), eq(decisionReceipts.userId, userId))).limit(1);
+  if (!rows[0] || !receiptBelongsToUser(rows[0].receipt, userId)) throw new Error("Decision Receipt not found");
+  return rows[0].receipt;
+}
+
+export async function submitResolutionEvidence(userId: number, input: ResolutionEvidenceInput, database?: ReceiptDatabase) {
+  const db = database ?? await getDb();
+  if (!db) throw new Error("Database is not configured");
+  await assertOwnedReceipt(db, userId, input.receiptId);
+
+  const result = await db.insert(receiptResolutions).values({
+    receiptId: input.receiptId,
+    userId,
+    outcome: input.outcome,
+    sourceUrl: input.sourceUrl,
+    evidenceSummary: input.evidenceSummary,
+  });
+  const id = insertId(result);
+  const rows = await db.select().from(receiptResolutions).where(and(eq(receiptResolutions.id, id), eq(receiptResolutions.userId, userId))).limit(1);
+  if (!rows[0]) throw new Error("Resolution evidence was created but could not be read back");
+  return rows[0];
+}
+
+export async function verifyResolutionEvidence(verifierId: number, resolutionId: number, status: ResolutionVerificationStatus, database?: ReceiptDatabase) {
+  const db = database ?? await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const existing = await db.select().from(receiptResolutions).where(eq(receiptResolutions.id, resolutionId)).limit(1);
+  if (!existing[0]) throw new Error("Resolution evidence not found");
+  if (existing[0].verificationStatus !== "SUBMITTED") throw new Error("Only submitted resolution evidence can be reviewed");
+
+  await db.update(receiptResolutions).set({ verificationStatus: status, verifiedBy: String(verifierId), verifiedAt: new Date() }).where(and(eq(receiptResolutions.id, resolutionId), eq(receiptResolutions.verificationStatus, "SUBMITTED")));
+  const rows = await db.select().from(receiptResolutions).where(eq(receiptResolutions.id, resolutionId)).limit(1);
+  if (!rows[0]) throw new Error("Resolution evidence review could not be read back");
+  return rows[0];
+}
+
 export async function listDecisionReceipts(userId: number, limit: number) {
   const rows = await receiptQuery(userId);
   return rows.slice(0, limit).map(shapeReceipt);
@@ -138,5 +254,7 @@ export async function listDecisionReceipts(userId: number, limit: number) {
 
 export async function getDecisionReceipt(userId: number, receiptId: number) {
   const rows = await receiptQuery(userId, receiptId);
-  return rows[0] && receiptBelongsToUser(rows[0].receipt, userId) ? shapeReceipt(rows[0]) : null;
+  if (!rows[0] || !receiptBelongsToUser(rows[0].receipt, userId)) return null;
+  const timeline = await getReceiptTimeline(userId, receiptId);
+  return { ...shapeReceipt(rows[0]), ...timeline };
 }

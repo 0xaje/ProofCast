@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import type { DreamDexMarketSnapshot, DreamDexSnapshot } from "./dreamdex";
 import { decisionReceipts, forecasts, marketSnapshots } from "../drizzle/schema";
-import { buildMarketSnapshotInsert, createDecisionReceipt, receiptBelongsToUser } from "./receipts";
-import { appRouter, receiptInputSchema } from "./routers";
+import { buildMarketSnapshotInsert, createDecisionReceipt, isVerifiedResolution, nextRevisionNumber, preservesOriginalForecast, receiptBelongsToUser, resolutionBelongsToUser, revisionBelongsToUser, verifyResolutionEvidence } from "./receipts";
+import { appRouter, receiptInputSchema, resolutionEvidenceInputSchema, revisionInputSchema } from "./routers";
 
 const market: DreamDexMarketSnapshot = {
   marketId: "market-1",
@@ -152,8 +152,45 @@ describe("Decision Receipt v1 persistence safeguards", () => {
   });
 });
 
+describe("Decision Receipt revision and resolution safeguards", () => {
+  it("creates a monotonic revision chain and only verified evidence counts", () => {
+    expect(nextRevisionNumber([])).toBe(1);
+    expect(nextRevisionNumber([{ revisionNumber: 1 }, { revisionNumber: 3 }])).toBe(4);
+    expect(isVerifiedResolution({ verificationStatus: "SUBMITTED" })).toBe(false);
+    expect(isVerifiedResolution({ verificationStatus: "VERIFIED" })).toBe(true);
+    expect(revisionBelongsToUser({ userId: 7 }, 7)).toBe(true);
+    expect(revisionBelongsToUser({ userId: 7 }, 8)).toBe(false);
+    expect(resolutionBelongsToUser({ userId: 7 }, 7)).toBe(true);
+    expect(resolutionBelongsToUser({ userId: 7 }, 8)).toBe(false);
+    expect(preservesOriginalForecast(12, { parentForecastId: 12 })).toBe(true);
+    expect(preservesOriginalForecast(12, { parentForecastId: 13 })).toBe(false);
+    expect(revisionInputSchema.safeParse({ direction: "DOWN", probabilityBps: 4_500, confidence: "LOW", thesis: "updated", counterThesis: "risk" }).success).toBe(true);
+    expect(resolutionEvidenceInputSchema.safeParse({ receiptId: 1, outcome: "YES", sourceUrl: "https://example.com/outcome", evidenceSummary: "A source supports the outcome." }).success).toBe(true);
+    expect(resolutionEvidenceInputSchema.safeParse({ receiptId: 1, outcome: "YES", sourceUrl: "not-a-url", evidenceSummary: "x" }).success).toBe(false);
+  });
+
+  it("allows one submitted resolution to be reviewed once, then blocks a second review", async () => {
+    let row = { id: 9, receiptId: 2, userId: 7, outcome: "YES", verificationStatus: "SUBMITTED", sourceUrl: "https://example.com", evidenceSummary: "evidence", verifiedBy: null, verifiedAt: null, createdAt: new Date() };
+    const database = {
+      select: () => ({
+        from: () => ({
+          where: () => ({ limit: async () => [row] }),
+        }),
+      }),
+      update: () => ({
+        set: (values: Record<string, unknown>) => ({ where: async () => { row = { ...row, ...values } as typeof row; } }),
+      }),
+    };
+
+    const verified = await verifyResolutionEvidence(99, 9, "VERIFIED", database as never);
+    expect(verified.verificationStatus).toBe("VERIFIED");
+    expect(verified.verifiedBy).toBe("99");
+    await expect(verifyResolutionEvidence(99, 9, "REJECTED", database as never)).rejects.toThrow("Only submitted resolution evidence");
+  });
+});
+
 describe("Decision Receipt v1 protected procedures", () => {
-  it("requires authentication for create, list, and detail reads", async () => {
+  it("requires authentication for create, list, detail, revise, and evidence submission", async () => {
     const caller = appRouter.createCaller(unauthenticatedContext());
     const input = {
       marketId: "market-1",
@@ -167,5 +204,8 @@ describe("Decision Receipt v1 protected procedures", () => {
     await expect(caller.receipts.create(input)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(caller.receipts.listMine()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(caller.receipts.getMineById({ id: 1 })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.receipts.revise({ receiptId: 1, direction: "UP", probabilityBps: 6_000, confidence: "HIGH", thesis: "updated", counterThesis: "risk" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.receipts.submitResolutionEvidence({ receiptId: 1, outcome: "YES", sourceUrl: "https://example.com", evidenceSummary: "evidence" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.receipts.verifyResolutionEvidence({ resolutionId: 1, status: "VERIFIED" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

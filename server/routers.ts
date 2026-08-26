@@ -1,16 +1,19 @@
-import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
+import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getDreamDexSnapshot } from "./dreamdex";
 import { getDb } from "./db";
 import {
   createDecisionReceipt,
+  createForecastRevision,
   getDecisionReceipt,
   listDecisionReceipts,
+  submitResolutionEvidence,
+  verifyResolutionEvidence,
 } from "./receipts";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
 export const receiptInputSchema = z.object({
   marketId: z.string().trim().min(1).max(128),
@@ -21,12 +24,29 @@ export const receiptInputSchema = z.object({
   counterThesis: z.string().trim().min(1).max(2_000),
 });
 
-function receiptError(error: unknown): TRPCError {
-  const message = error instanceof Error ? error.message : "Unable to create Decision Receipt";
+export const revisionInputSchema = receiptInputSchema.omit({ marketId: true });
+
+export const resolutionEvidenceInputSchema = z.object({
+  receiptId: z.number().int().positive(),
+  outcome: z.enum(["YES", "NO", "VOID"]),
+  sourceUrl: z.string().url().max(2_048),
+  evidenceSummary: z.string().trim().min(1).max(4_000),
+});
+
+export const resolutionReviewInputSchema = z.object({
+  resolutionId: z.number().int().positive(),
+  status: z.enum(["VERIFIED", "REJECTED"]),
+});
+
+function receiptError(error: unknown, fallback: string): TRPCError {
+  const message = error instanceof Error ? error.message : fallback;
   const isClientError = [
     "Selected market was not present",
     "A fresh verified market snapshot is required",
     "A receipt can only be committed",
+    "Decision Receipt not found",
+    "Only submitted resolution evidence can be reviewed",
+    "Resolution evidence not found",
   ].some(prefix => message.startsWith(prefix));
   return new TRPCError({ code: isClientError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message });
 }
@@ -55,19 +75,44 @@ export const appRouter = router({
         const snapshot = await getDreamDexSnapshot(6);
         return await createDecisionReceipt(ctx.user.id, input, snapshot);
       } catch (error) {
-        throw receiptError(error);
+        throw receiptError(error, "Unable to create Decision Receipt");
       }
     }),
+    revise: protectedProcedure
+      .input(z.object({ receiptId: z.number().int().positive(), ...revisionInputSchema.shape }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const { receiptId, ...revision } = input;
+          return await createForecastRevision(ctx.user.id, receiptId, revision);
+        } catch (error) {
+          throw receiptError(error, "Unable to revise Decision Receipt");
+        }
+      }),
+    submitResolutionEvidence: protectedProcedure
+      .input(resolutionEvidenceInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await submitResolutionEvidence(ctx.user.id, input);
+        } catch (error) {
+          throw receiptError(error, "Unable to submit resolution evidence");
+        }
+      }),
+    verifyResolutionEvidence: adminProcedure
+      .input(resolutionReviewInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await verifyResolutionEvidence(ctx.user.id, input.resolutionId, input.status);
+        } catch (error) {
+          throw receiptError(error, "Unable to review resolution evidence");
+        }
+      }),
     listMine: protectedProcedure
       .input(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional())
       .query(async ({ ctx, input }) => {
         try {
           return await listDecisionReceipts(ctx.user.id, input?.limit ?? 25);
         } catch (error) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: error instanceof Error ? error.message : "Unable to list Decision Receipts",
-          });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to list Decision Receipts" });
         }
       }),
     getMineById: protectedProcedure
@@ -79,10 +124,7 @@ export const appRouter = router({
           return receipt;
         } catch (error) {
           if (error instanceof TRPCError) throw error;
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: error instanceof Error ? error.message : "Unable to read Decision Receipt",
-          });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to read Decision Receipt" });
         }
       }),
   }),

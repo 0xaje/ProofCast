@@ -168,3 +168,18 @@
 - [x] Run the full quality suite: 12 unit tests, Playwright browser integration flow, authenticated database-backed receipt E2E, TypeScript check, production build, and visual route verification passed.
 
 - [x] Add and execute a true authenticated database-backed receipt E2E test with a test-only auth header, test-only DreamDEX fixture, disposable local/CI MySQL service, and migration step; the mocked browser integration test remains available for fast local validation.
+
+## Project status and next-phase review
+
+- [x] Review the latest checkpoint, repository state, active routes, backend capabilities, and validation results.
+- [x] Separate demo-ready capabilities from unfinished product infrastructure and intentional safety boundaries.
+- [x] Define and document the next implementation phase with ordered milestones and acceptance criteria in `docs/product-roadmap-assessment.md`.
+
+## Receipt revisions and resolution evidence
+
+- [x] Audit the current receipt schema, helpers, protected procedures, and Proof Profile extension points.
+- [x] Add immutable receipt revision and verified resolution-evidence tables with a reviewed migration.
+- [x] Implement protected revision and resolution procedures with owner scoping and verification rules.
+- [x] Update Proof Profile to show revision history and resolution evidence without implying scores prematurely.
+- [x] Add validation, ownership, immutability, migration, API, administrator verification, and browser coverage for revisions and evidence.
+- [x] Run the full quality suite: 14 unit tests, TypeScript check, production build, schema verification, and both mocked and authenticated database-backed browser flows passed; calibration/scoring remains the next product phase.

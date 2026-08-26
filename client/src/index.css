@@ -34,3 +34,79 @@
 /* Comparison widths remain still between renders. They transition only when a new sourced Market/EventForge value or the deliberate local You forecast changes the inline width. */
 @media (prefers-reduced-motion: no-preference) { .pi-comparison-row i.pi-bar-motion { transition:width 520ms cubic-bezier(.23,1,.32,1); will-change:width; }.pi-comparison-row i[style*="width: 0%"] { transition-duration:0ms; } }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; } }
+
+
+/* Revision and resolution evidence surfaces */
+.pi-evidence-stack {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid rgba(232, 230, 222, 0.16);
+}
+
+.pi-evidence-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgba(232, 230, 222, 0.1);
+  color: var(--pi-paper, #e8e6de);
+}
+
+.pi-evidence-row > span {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.pi-evidence-row b,
+.pi-evidence-row small {
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.pi-evidence-row small { color: rgba(232, 230, 222, 0.62); }
+.pi-evidence-row a { color: var(--pi-acid, #c8f06a); font-size: 0.68rem; text-decoration: underline; text-underline-offset: 0.2rem; }
+
+.pi-evidence-form {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(232, 230, 222, 0.16);
+}
+
+.pi-evidence-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: rgba(232, 230, 222, 0.72);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pi-evidence-form input,
+.pi-evidence-form select,
+.pi-evidence-form textarea {
+  width: 100%;
+  border: 1px solid rgba(232, 230, 222, 0.24);
+  border-radius: 0;
+  background: rgba(232, 230, 222, 0.06);
+  color: var(--pi-paper, #e8e6de);
+  padding: 0.65rem 0.7rem;
+  font: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.pi-evidence-form textarea { min-height: 5rem; resize: vertical; }
+.pi-evidence-form input:focus,
+.pi-evidence-form select:focus,
+.pi-evidence-form textarea:focus { outline: 2px solid var(--pi-acid, #c8f06a); outline-offset: 2px; }
+.pi-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+
+@media (max-width: 720px) {
+  .pi-form-grid { grid-template-columns: 1fr; }
+  .pi-evidence-row { flex-direction: column; }
+}

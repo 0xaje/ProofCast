@@ -94,6 +94,49 @@ export const decisionReceipts = mysqlTable(
   }),
 );
 
+/** An immutable correction to a committed forecast. Each revision keeps the prior forecast intact. */
+export const forecastRevisions = mysqlTable(
+  "forecast_revisions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    receiptId: int("receiptId").notNull().references(() => decisionReceipts.id),
+    userId: int("userId").notNull().references(() => users.id),
+    parentForecastId: int("parentForecastId").notNull().references(() => forecasts.id),
+    revisionNumber: int("revisionNumber").notNull(),
+    direction: mysqlEnum("direction", ["UP", "DOWN"]).notNull(),
+    probabilityBps: int("probabilityBps").notNull(),
+    confidence: mysqlEnum("confidence", ["LOW", "MEDIUM", "HIGH"]).notNull(),
+    thesis: text("thesis").notNull(),
+    counterThesis: text("counterThesis").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    receiptRevisionIdx: uniqueIndex("forecast_revisions_receipt_revision_unique").on(table.receiptId, table.revisionNumber),
+    userCreatedIdx: index("forecast_revisions_user_created_idx").on(table.userId, table.createdAt),
+  }),
+);
+
+/** Evidence submitted for a receipt outcome; only explicitly verified rows count as verified evidence. */
+export const receiptResolutions = mysqlTable(
+  "receipt_resolutions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    receiptId: int("receiptId").notNull().references(() => decisionReceipts.id),
+    userId: int("userId").notNull().references(() => users.id),
+    outcome: mysqlEnum("outcome", ["YES", "NO", "VOID"]).notNull(),
+    verificationStatus: mysqlEnum("verificationStatus", ["SUBMITTED", "VERIFIED", "REJECTED"]).default("SUBMITTED").notNull(),
+    sourceUrl: varchar("sourceUrl", { length: 2_048 }).notNull(),
+    evidenceSummary: text("evidenceSummary").notNull(),
+    verifiedBy: varchar("verifiedBy", { length: 128 }),
+    verifiedAt: timestamp("verifiedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    receiptCreatedIdx: index("receipt_resolutions_receipt_created_idx").on(table.receiptId, table.createdAt),
+    userCreatedIdx: index("receipt_resolutions_user_created_idx").on(table.userId, table.createdAt),
+  }),
+);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type MarketSnapshot = typeof marketSnapshots.$inferSelect;
@@ -102,3 +145,7 @@ export type Forecast = typeof forecasts.$inferSelect;
 export type InsertForecast = typeof forecasts.$inferInsert;
 export type DecisionReceipt = typeof decisionReceipts.$inferSelect;
 export type InsertDecisionReceipt = typeof decisionReceipts.$inferInsert;
+export type ForecastRevision = typeof forecastRevisions.$inferSelect;
+export type InsertForecastRevision = typeof forecastRevisions.$inferInsert;
+export type ReceiptResolution = typeof receiptResolutions.$inferSelect;
+export type InsertReceiptResolution = typeof receiptResolutions.$inferInsert;

@@ -31,5 +31,26 @@ test.describe("Decision Receipt database-backed E2E", () => {
     await expect(refreshedRow).toBeVisible();
     await refreshedRow.click();
     await expect(page.getByTestId("receipt-detail")).toContainText("E2E test market resolves after the receipt is committed");
+
+    await page.getByTestId("revise-receipt").click();
+    const revisionForm = page.getByTestId("revision-form");
+    await revisionForm.locator("textarea").nth(0).fill("The revised thesis still sees sustained bid support.");
+    await revisionForm.locator("textarea").nth(1).fill("Liquidity can weaken before the test expiry.");
+    await revisionForm.getByRole("button", { name: "Commit revision" }).click();
+    await expect(page.getByTestId(/^revision-row-/).first()).toContainText("Revision 1");
+
+    const resolutionForm = page.getByTestId("resolution-form");
+    await resolutionForm.locator("input[type=url]").fill("https://example.com/verified-outcome");
+    await resolutionForm.locator("textarea").fill("The isolated resolution source confirms the test outcome.");
+    await resolutionForm.getByRole("button", { name: "Submit for verification" }).click();
+    await expect(page.getByTestId(/^resolution-row-/).first()).toContainText("SUBMITTED");
+
+    await page.reload();
+    const postRevisionRow = page.getByTestId(/^receipt-row-/).first();
+    await expect(postRevisionRow).toBeVisible();
+    await postRevisionRow.click();
+    await expect(page.getByTestId("receipt-detail")).toContainText("The revised thesis still sees sustained bid support.");
+    await expect(page.getByTestId(/^revision-row-/).first()).toContainText("Revision 1");
+    await expect(page.getByTestId(/^resolution-row-/).first()).toContainText("SUBMITTED");
   });
 });

@@ -61,6 +61,8 @@ async function mockReceiptNetwork(page: Page) {
           createdAt: new Date().toISOString(),
           forecast: { id: 51, userId: 7, marketId: market.marketId, direction: input.direction, probabilityBps: input.probabilityBps, confidence: input.confidence, thesis: input.thesis, counterThesis: input.counterThesis, status: "COMMITTED", committedAt: new Date().toISOString() },
           marketSnapshot: { id: 61, marketId: market.marketId, asset: market.asset, question: market.question, marketState: market.marketState, network: snapshot.network, capturedAt: new Date().toISOString(), provenance: snapshot.provenance, orderBook: { yesBids: market.yesBids, yesAsks: market.yesAsks } },
+          revisions: [],
+          resolutions: [],
         };
         receipts = [receipt, ...receipts];
         return trpcResult(receipt);
