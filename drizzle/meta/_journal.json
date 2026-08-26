@@ -15,6 +15,13 @@
       "when": 1787768814465,
       "tag": "0001_shiny_hawkeye",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1787771768501,
+      "tag": "0002_green_killmonger",
+      "breakpoints": true
     }
   ]
 }

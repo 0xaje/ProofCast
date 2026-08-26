@@ -136,3 +136,9 @@
   .pi-review-actions .pi-action { flex: 1; justify-content: center; }
   .pi-trend-grid { grid-template-columns: 1fr; }
 }
+
+.pi-review-entry textarea { width: 100%; min-height: 4.5rem; margin-top: .75rem; padding: .7rem; resize: vertical; border: 1px solid var(--pi-line); background: #efede5; color: var(--pi-ink); font: 12px/1.45 "IBM Plex Sans", sans-serif; }
+.pi-review-entry textarea:focus { outline: 2px solid var(--pi-red); outline-offset: 2px; }
+.pi-export-action { margin-top: 1rem; }
+.pi-action:disabled { cursor: wait; opacity: .6; transform: none; }
+@media (max-width: 720px) { .pi-export-action { width: 100%; } }

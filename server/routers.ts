@@ -10,6 +10,7 @@ import {
   getDecisionReceipt,
   listPendingResolutionEvidence,
   listDecisionReceipts,
+  buildCalibrationCsv,
   submitResolutionEvidence,
   verifyResolutionEvidence,
 } from "./receipts";
@@ -38,6 +39,7 @@ export const resolutionEvidenceInputSchema = z.object({
 export const resolutionReviewInputSchema = z.object({
   resolutionId: z.number().int().positive(),
   status: z.enum(["VERIFIED", "REJECTED"]),
+  reviewerNotes: z.string().trim().max(2_000).optional(),
 });
 
 function receiptError(error: unknown, fallback: string): TRPCError {
@@ -116,11 +118,18 @@ export const appRouter = router({
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to load review queue" });
         }
       }),
+    exportCsv: protectedProcedure.query(async ({ ctx }) => {
+      try {
+        return await buildCalibrationCsv(ctx.user.id);
+      } catch (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to export calibration history" });
+      }
+    }),
     verifyResolutionEvidence: adminProcedure
       .input(resolutionReviewInputSchema)
       .mutation(async ({ ctx, input }) => {
         try {
-          return await verifyResolutionEvidence(ctx.user.id, input.resolutionId, input.status);
+          return await verifyResolutionEvidence(ctx.user.id, input.resolutionId, input.status, undefined, input.reviewerNotes);
         } catch (error) {
           throw receiptError(error, "Unable to review resolution evidence");
         }

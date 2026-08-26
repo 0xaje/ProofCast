@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import type { DreamDexMarketSnapshot, DreamDexSnapshot } from "./dreamdex";
 import { decisionReceipts, forecasts, marketSnapshots } from "../drizzle/schema";
-import { buildMarketSnapshotInsert, createDecisionReceipt, isVerifiedResolution, nextRevisionNumber, pickVerifiedOwnedResolution, preservesOriginalForecast, receiptBelongsToUser, resolutionBelongsToUser, revisionBelongsToUser, validateEvidenceSourceUrl, verifyResolutionEvidence } from "./receipts";
+import { buildMarketSnapshotInsert, createDecisionReceipt, isVerifiedResolution, nextRevisionNumber, pickVerifiedOwnedResolution, preservesOriginalForecast, receiptBelongsToUser, resolutionBelongsToUser, revisionBelongsToUser, validateEvidenceSourceUrl, verifyResolutionEvidence, hashEvidenceCommitment, csvCell } from "./receipts";
 import { appRouter, receiptInputSchema, resolutionEvidenceInputSchema, revisionInputSchema } from "./routers";
 import { calculateCalibrationMetrics, scoreVerifiedOutcome, selectForecastAtResolution } from "./scoring";
 
@@ -184,9 +184,10 @@ describe("Decision Receipt revision and resolution safeguards", () => {
       }),
     };
 
-    const verified = await verifyResolutionEvidence(99, 9, "VERIFIED", database as never);
+    const verified = await verifyResolutionEvidence(99, 9, "VERIFIED", database as never, "Evidence checked against the source.");
     expect(verified.verificationStatus).toBe("VERIFIED");
     expect(verified.verifiedBy).toBe("99");
+    expect(verified.reviewerNotes).toBe("Evidence checked against the source.");
     await expect(verifyResolutionEvidence(99, 9, "REJECTED", database as never)).rejects.toThrow("Only submitted resolution evidence");
   });
 });
@@ -198,6 +199,14 @@ describe("Resolution-time scoring and evidence sources", () => {
     const verifiedAt = new Date("2026-01-03T00:00:00.000Z");
     expect(selectForecastAtResolution({ direction: "UP", probabilityBps: 8_000, committedAt: originalAt } as never, [{ direction: "DOWN", probabilityBps: 3_000, createdAt: revisionAt }], verifiedAt)).toMatchObject({ direction: "DOWN", probabilityBps: 3_000 });
     expect(selectForecastAtResolution({ direction: "UP", probabilityBps: 8_000, committedAt: originalAt } as never, [{ direction: "DOWN", probabilityBps: 3_000, createdAt: new Date("2026-01-04T00:00:00.000Z") }], verifiedAt)).toMatchObject({ direction: "UP", probabilityBps: 8_000 });
+  });
+
+  it("creates stable SHA-256 commitments and safely escapes CSV cells", () => {
+    const first = hashEvidenceCommitment("YES", "https://example.com/outcome", "A source supports the outcome.");
+    expect(first).toHaveLength(64);
+    expect(hashEvidenceCommitment("YES", "https://example.com/outcome", "A source supports the outcome.")).toBe(first);
+    expect(hashEvidenceCommitment("NO", "https://example.com/outcome", "A source supports the outcome.")).not.toBe(first);
+    expect(csvCell("reviewer, note\\nsecond line")).toBe('"reviewer, note\\nsecond line"');
   });
 
   it("accepts public HTTPS sources and rejects unsafe or credentialed URLs", () => {
@@ -253,6 +262,7 @@ describe("Decision Receipt v1 protected procedures", () => {
     await expect(caller.receipts.revise({ receiptId: 1, direction: "UP", probabilityBps: 6_000, confidence: "HIGH", thesis: "updated", counterThesis: "risk" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(caller.receipts.submitResolutionEvidence({ receiptId: 1, outcome: "YES", sourceUrl: "https://example.com", evidenceSummary: "evidence" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(caller.receipts.metrics()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.receipts.exportCsv()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(caller.receipts.verifyResolutionEvidence({ resolutionId: 1, status: "VERIFIED" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.receipts.pendingReview()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });

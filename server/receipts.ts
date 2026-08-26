@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   and,
   asc,
@@ -31,6 +32,10 @@ export type ResolutionEvidenceInput = {
 };
 
 export type ResolutionVerificationStatus = "VERIFIED" | "REJECTED";
+
+export function hashEvidenceCommitment(outcome: ResolutionEvidenceInput["outcome"], sourceUrl: string, evidenceSummary: string): string {
+  return createHash("sha256").update(JSON.stringify({ outcome, sourceUrl: sourceUrl.trim(), evidenceSummary: evidenceSummary.trim() })).digest("hex");
+}
 
 export function validateEvidenceSourceUrl(rawUrl: string): string {
   const url = new URL(rawUrl.trim());
@@ -246,12 +251,15 @@ export async function submitResolutionEvidence(userId: number, input: Resolution
   if (!db) throw new Error("Database is not configured");
   await assertOwnedReceipt(db, userId, input.receiptId);
 
+  const sourceUrl = validateEvidenceSourceUrl(input.sourceUrl);
   const result = await db.insert(receiptResolutions).values({
     receiptId: input.receiptId,
     userId,
     outcome: input.outcome,
-    sourceUrl: validateEvidenceSourceUrl(input.sourceUrl),
+    sourceUrl,
     evidenceSummary: input.evidenceSummary,
+    evidenceHash: hashEvidenceCommitment(input.outcome, sourceUrl, input.evidenceSummary),
+    hashAlgorithm: "SHA-256",
   });
   const id = insertId(result);
   const rows = await db.select().from(receiptResolutions).where(and(eq(receiptResolutions.id, id), eq(receiptResolutions.userId, userId))).limit(1);
@@ -273,14 +281,28 @@ export async function listPendingResolutionEvidence(limit = 50, database?: Recei
     .limit(limit);
 }
 
-export async function verifyResolutionEvidence(verifierId: number, resolutionId: number, status: ResolutionVerificationStatus, database?: ReceiptDatabase) {
+export function csvCell(value: string | number | null): string {
+  const text = value === null ? "" : String(value);
+  return /[",\\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+export async function buildCalibrationCsv(userId: number, database?: ReceiptDatabase) {
+  const metrics = await getCalibrationMetrics(userId, database);
+  const rows = [
+    ["date", "verified_count", "directional_accuracy_pct", "mean_brier_score_bps"],
+    ...metrics.trend.map(point => [point.date, point.verifiedCount, point.directionalAccuracyPct, point.meanBrierScoreBps]),
+  ];
+  return rows.map(row => row.map(cell => csvCell(cell)).join(",")).join("\\n") + "\\n";
+}
+
+export async function verifyResolutionEvidence(verifierId: number, resolutionId: number, status: ResolutionVerificationStatus, database?: ReceiptDatabase, reviewerNotes?: string) {
   const db = database ?? await getDb();
   if (!db) throw new Error("Database is not configured");
   const existing = await db.select().from(receiptResolutions).where(eq(receiptResolutions.id, resolutionId)).limit(1);
   if (!existing[0]) throw new Error("Resolution evidence not found");
   if (existing[0].verificationStatus !== "SUBMITTED") throw new Error("Only submitted resolution evidence can be reviewed");
 
-  await db.update(receiptResolutions).set({ verificationStatus: status, verifiedBy: String(verifierId), verifiedAt: new Date() }).where(and(eq(receiptResolutions.id, resolutionId), eq(receiptResolutions.verificationStatus, "SUBMITTED")));
+  await db.update(receiptResolutions).set({ verificationStatus: status, verifiedBy: String(verifierId), verifiedAt: new Date(), reviewerNotes: reviewerNotes?.trim() || null }).where(and(eq(receiptResolutions.id, resolutionId), eq(receiptResolutions.verificationStatus, "SUBMITTED")));
   const rows = await db.select().from(receiptResolutions).where(eq(receiptResolutions.id, resolutionId)).limit(1);
   if (!rows[0]) throw new Error("Resolution evidence review could not be read back");
   return rows[0];

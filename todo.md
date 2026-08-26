@@ -218,3 +218,12 @@
 - [x] Validate evidence URLs and add an administrator review-queue API with owner-safe review transitions.
 - [x] Build an administrator review queue and a verified-history calibration trend chart with truthful empty states.
 - [x] Add direct scoring, source-validation, API, ownership, and browser coverage; run validation and checkpoint the release.
+
+## Admin review, evidence integrity, and CSV export
+
+- [x] Audit resolution schema, verification procedures, admin identity checks, metrics output, and route structure.
+- [x] Add additive reviewer-note and evidence-integrity fields with a reviewed migration.
+- [x] Implement reviewer-note persistence, strict admin queue procedures, and server-side evidence hash commitments.
+- [x] Add an admin-only review route and reviewer-note controls with truthful source-integrity states.
+- [x] Add owner-scoped CSV export for verified calibration history.
+- [x] Add schema, API, ownership, hash, notes, CSV, and browser coverage; run validation and checkpoint the release.
