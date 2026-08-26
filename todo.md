@@ -83,3 +83,17 @@
 - [x] Capture current desktop and mobile views of landing and workspace after the final Proof Instrument rail update.
 - [x] Record browser-observable evidence that the completed hero asset is rendered in the landing hero and that all routes preserve the same proof-loop brand language.
 - [x] Persist the direct served-asset verification and route-by-route Proof Instrument evidence in the project record.
+
+## Proof Instrument workspace unification
+
+- [x] Audit and remove visual remnants of the older dark dashboard system from the shared workspace shell and page routes.
+- [x] Apply the landing page’s warm titanium field, Carbon panels, Signal Vermilion, Acid Chartreuse, proof-seal, and editorial border language to the Signal Room shell.
+- [x] Restyle Command Center, Market Decision, and Proof Profile so their information hierarchy and signature instruments feel like the landing page’s professional Proof Instrument product.
+- [x] Verify the unified landing-to-workspace handoff across desktop and mobile, then typecheck, build, and prepare the refinement checkpoint.
+
+## Route-level Proof Instrument composition
+
+- [x] Rebuild the Command Center as an asymmetric proof-loop surface with one dominant live-signal object and supporting evidence instruments.
+- [x] Rebuild Market Decision around a main commitment surface, a persistent comparison instrument, and a distinct evidence column.
+- [x] Rebuild Proof Profile around an editorial receipt form and structured accountable empty states.
+- [x] Re-verify the persistent Proof Instrument rail and unified routes after the route-level redesign.
