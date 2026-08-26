@@ -57,3 +57,29 @@
 - [x] Define a neutral, prediction-oriented Universe palette with cosmic ink, ultraviolet, aurora teal, starlight, and amber semantic roles.
 - [x] Replace the Mineral Signal shell tokens and visual treatments with the Universe palette without altering product layout or data behavior.
 - [x] Verify the Universe palette across desktop and mobile Signal Room routes, then typecheck, build, and prepare the corrected design checkpoint.
+
+## Complete judge-ready product redesign
+
+- [x] Define a differentiated Proofcast story, premium visual direction, and landing-to-workspace information architecture for judge evaluation.
+- [x] Replace the current home route with an enticing product landing page that demonstrates the proof loop from market signal to accountable record.
+- [x] Create a distinctive brand visual asset and visual motif for the landing narrative.
+- [x] Rebuild the command, market decision, and proof routes as a unified professional workspace reached from the landing page.
+- [x] Verify the desktop/mobile judge journey, live-data states, test suite, production build, and prepare the final redesign checkpoint.
+
+## Redesign unification pass
+
+- [x] Confirm the finished Proof Instrument hero visual is rendered on the live landing page rather than a generation placeholder.
+- [x] Apply shared Proof Instrument brand anchors and recurring evidence instruments across landing, Signal Room, Market Decision, and Proof Profile.
+- [x] Re-verify the unified judge journey across desktop and mobile before checkpointing.
+
+## Live redesign verification
+
+- [x] Confirm in-browser that the landing hero renders the completed Proof Instrument image rather than a generation placeholder.
+- [x] Record fresh desktop and mobile evidence that the landing and workspace now read as one Proof Instrument product journey.
+- [x] Re-verify the unified judge journey across desktop and mobile before checkpointing.
+
+## Post-unification evidence
+
+- [x] Capture current desktop and mobile views of landing and workspace after the final Proof Instrument rail update.
+- [x] Record browser-observable evidence that the completed hero asset is rendered in the landing hero and that all routes preserve the same proof-loop brand language.
+- [x] Persist the direct served-asset verification and route-by-route Proof Instrument evidence in the project record.
