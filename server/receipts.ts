@@ -11,6 +11,7 @@ import {
 } from "../drizzle/schema";
 import type { DreamDexMarketSnapshot, DreamDexSnapshot } from "./dreamdex";
 import { getDb } from "./db";
+import { calculateCalibrationMetrics, scoreVerifiedOutcome } from "./scoring";
 
 export type CreateReceiptInput = Pick<
   InsertForecast,
@@ -40,6 +41,14 @@ export function revisionBelongsToUser(revision: Pick<typeof forecastRevisions.$i
 
 export function resolutionBelongsToUser(resolution: Pick<typeof receiptResolutions.$inferSelect, "userId">, userId: number): boolean {
   return resolution.userId === userId;
+}
+
+export function pickVerifiedOwnedResolution(userId: number, resolutions: Array<Pick<typeof receiptResolutions.$inferSelect, "userId" | "verificationStatus" | "outcome">>) {
+  return resolutions.filter(item => resolutionBelongsToUser(item, userId)).find(item => item.verificationStatus === "VERIFIED");
+}
+
+export function filterOwnedReceiptRows<T extends { receipt: Pick<DecisionReceipt, "userId"> }>(rows: T[], userId: number): T[] {
+  return rows.filter(row => receiptBelongsToUser(row.receipt, userId));
 }
 
 export function preservesOriginalForecast(originalForecastId: number, revision: Pick<typeof forecastRevisions.$inferSelect, "parentForecastId">): boolean {
@@ -112,8 +121,8 @@ function shapeReceipt(row: {
   };
 }
 
-async function receiptQuery(userId: number, receiptId?: number) {
-  const db = await getDb();
+async function receiptQuery(userId: number, receiptId?: number, database?: ReceiptDatabase) {
+  const db = database ?? await getDb();
   if (!db) throw new Error("Database is not configured");
 
   const filters = [eq(decisionReceipts.userId, userId)];
@@ -128,8 +137,8 @@ async function receiptQuery(userId: number, receiptId?: number) {
     .orderBy(desc(decisionReceipts.createdAt));
 }
 
-async function getReceiptTimeline(userId: number, receiptId: number) {
-  const db = await getDb();
+async function getReceiptTimeline(userId: number, receiptId: number, database?: ReceiptDatabase) {
+  const db = database ?? await getDb();
   if (!db) throw new Error("Database is not configured");
 
   const [revisions, resolutions] = await Promise.all([
@@ -245,6 +254,24 @@ export async function verifyResolutionEvidence(verifierId: number, resolutionId:
   const rows = await db.select().from(receiptResolutions).where(eq(receiptResolutions.id, resolutionId)).limit(1);
   if (!rows[0]) throw new Error("Resolution evidence review could not be read back");
   return rows[0];
+}
+
+export async function getCalibrationMetrics(userId: number, database?: ReceiptDatabase) {
+  const db = database ?? await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const rows = filterOwnedReceiptRows(await receiptQuery(userId, undefined, db), userId);
+  const scored = [];
+  let excludedCount = 0;
+
+  for (const row of rows) {
+    const timeline = await getReceiptTimeline(userId, row.receipt.id, db);
+    const verified = pickVerifiedOwnedResolution(userId, timeline.resolutions);
+    const score = verified ? scoreVerifiedOutcome(row.receipt.id, row.forecast, verified) : null;
+    if (score) scored.push(score);
+    else excludedCount += 1;
+  }
+
+  return calculateCalibrationMetrics(scored, excludedCount);
 }
 
 export async function listDecisionReceipts(userId: number, limit: number) {

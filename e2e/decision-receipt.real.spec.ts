@@ -9,7 +9,7 @@ test.describe("Decision Receipt database-backed E2E", () => {
     extraHTTPHeaders: { "x-proofcast-e2e-user": "proofcast-e2e-user" },
   });
 
-  test("commits through tRPC and database, refreshes, and inspects the owner receipt", async ({ page }) => {
+  test("commits through tRPC and database, refreshes, and inspects the owner receipt", async ({ page, browser }) => {
     await page.goto("/market?market=e2e-market-1");
     await expect(page.getByTestId("forecast-workflow")).toContainText("Make your forecast specific.");
     await page.getByTestId("forecast-thesis").fill("The isolated test market has sustained bid support.");
@@ -44,13 +44,24 @@ test.describe("Decision Receipt database-backed E2E", () => {
     await resolutionForm.locator("textarea").fill("The isolated resolution source confirms the test outcome.");
     await resolutionForm.getByRole("button", { name: "Submit for verification" }).click();
     await expect(page.getByTestId(/^resolution-row-/).first()).toContainText("SUBMITTED");
+    const resolutionTestId = await page.getByTestId(/^resolution-row-/).first().getAttribute("data-testid");
+    const resolutionId = Number(resolutionTestId?.replace("resolution-row-", ""));
+    expect(resolutionId).toBeGreaterThan(0);
+
+    const adminContext = await browser.newContext({ extraHTTPHeaders: { "x-proofcast-e2e-user": "proofcast-e2e-admin" } });
+    const adminPage = await adminContext.newPage();
+    const reviewResponse = await adminPage.request.post("/api/trpc/receipts.verifyResolutionEvidence", { data: { json: { resolutionId, status: "VERIFIED" } } });
+    expect(reviewResponse.ok()).toBe(true);
+    await adminContext.close();
 
     await page.reload();
     const postRevisionRow = page.getByTestId(/^receipt-row-/).first();
     await expect(postRevisionRow).toBeVisible();
     await postRevisionRow.click();
     await expect(page.getByTestId("receipt-detail")).toContainText("The revised thesis still sees sustained bid support.");
+    await expect(page.locator(".pi-score-strip")).toContainText("100.0%");
+    await expect(page.getByTestId("calibration-metrics")).toContainText("Predicted 50.0% / observed 100.0%");
     await expect(page.getByTestId(/^revision-row-/).first()).toContainText("Revision 1");
-    await expect(page.getByTestId(/^resolution-row-/).first()).toContainText("SUBMITTED");
+    await expect(page.getByTestId(/^resolution-row-/).first()).toContainText("VERIFIED");
   });
 });

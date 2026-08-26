@@ -183,3 +183,29 @@
 - [x] Update Proof Profile to show revision history and resolution evidence without implying scores prematurely.
 - [x] Add validation, ownership, immutability, migration, API, administrator verification, and browser coverage for revisions and evidence.
 - [x] Run the full quality suite: 14 unit tests, TypeScript check, production build, schema verification, and both mocked and authenticated database-backed browser flows passed; calibration/scoring remains the next product phase.
+
+## Verified outcome scoring and calibration metrics
+
+- [x] Audit the current receipt, revision, resolution, and Proof Profile contracts for scoring extension points.
+- [x] Define transparent scoring and calibration formulas with explicit verified, rejected, unresolved, and void handling.
+- [x] Implement server-side scoring and owner-scoped calibration procedures with tests.
+- [x] Update Proof Profile with verified score and calibration metrics while preserving honest empty states.
+- [x] Add protected API and browser coverage, run the full validation suite, and verify scoring against the existing resolution schema; no new migration was required.
+
+## Scoring coverage hardening
+
+- [x] Add a focused owner-isolation test proving calibration aggregation excludes another user’s receipts and resolutions.
+- [x] Add an explicit calibration-metrics error state and retry action in Proof Profile.
+- [x] Add API and browser coverage proving a VERIFIED non-VOID outcome produces visible accuracy, Brier, and calibration-bin metrics.
+- [x] Save a new checkpoint after scoring/calibration coverage is complete and validated.
+
+## Calibration coverage completion
+
+- [x] Add a direct `getCalibrationMetrics` test with mixed-user receipt and resolution fixtures proving foreign data is excluded end to end.
+- [x] Add a protected API-level metrics test asserting verified non-void scoring values and calibration bins.
+- [x] Save a new checkpoint after the final scoring tests and build pass.
+
+## Final calibration API realism
+
+- [x] Replace the mocked calibration API test with an unmocked protected procedure test using deterministic verified non-void receipt/resolution fixtures and the real aggregation/scoring path.
+- [x] Save a new checkpoint after the final calibration coverage passes; unit tests, TypeScript validation, production build, and verified browser coverage passed.

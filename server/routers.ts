@@ -6,6 +6,7 @@ import { getDb } from "./db";
 import {
   createDecisionReceipt,
   createForecastRevision,
+  getCalibrationMetrics,
   getDecisionReceipt,
   listDecisionReceipts,
   submitResolutionEvidence,
@@ -97,6 +98,13 @@ export const appRouter = router({
           throw receiptError(error, "Unable to submit resolution evidence");
         }
       }),
+    metrics: protectedProcedure.query(async ({ ctx }) => {
+      try {
+        return await getCalibrationMetrics(ctx.user.id);
+      } catch (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to calculate calibration metrics" });
+      }
+    }),
     verifyResolutionEvidence: adminProcedure
       .input(resolutionReviewInputSchema)
       .mutation(async ({ ctx, input }) => {

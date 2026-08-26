@@ -19,7 +19,8 @@ export async function createContext(
       const testUser = await import("../db").then(({ getUserByOpenId, upsertUser }) =>
         getUserByOpenId(testOpenId).then(async existing => {
           if (existing) return existing;
-          await upsertUser({ openId: testOpenId, name: "E2E Test User", loginMethod: "e2e" });
+          const role = testOpenId === "proofcast-e2e-admin" ? "admin" : "user";
+          await upsertUser({ openId: testOpenId, name: role === "admin" ? "E2E Test Administrator" : "E2E Test User", loginMethod: "e2e", role });
           return getUserByOpenId(testOpenId);
         }),
       );

@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import type { DreamDexMarketSnapshot, DreamDexSnapshot } from "./dreamdex";
 import { decisionReceipts, forecasts, marketSnapshots } from "../drizzle/schema";
-import { buildMarketSnapshotInsert, createDecisionReceipt, isVerifiedResolution, nextRevisionNumber, preservesOriginalForecast, receiptBelongsToUser, resolutionBelongsToUser, revisionBelongsToUser, verifyResolutionEvidence } from "./receipts";
+import { buildMarketSnapshotInsert, createDecisionReceipt, isVerifiedResolution, nextRevisionNumber, pickVerifiedOwnedResolution, preservesOriginalForecast, receiptBelongsToUser, resolutionBelongsToUser, revisionBelongsToUser, verifyResolutionEvidence } from "./receipts";
 import { appRouter, receiptInputSchema, resolutionEvidenceInputSchema, revisionInputSchema } from "./routers";
+import { calculateCalibrationMetrics, scoreVerifiedOutcome } from "./scoring";
 
 const market: DreamDexMarketSnapshot = {
   marketId: "market-1",
@@ -158,6 +159,7 @@ describe("Decision Receipt revision and resolution safeguards", () => {
     expect(nextRevisionNumber([{ revisionNumber: 1 }, { revisionNumber: 3 }])).toBe(4);
     expect(isVerifiedResolution({ verificationStatus: "SUBMITTED" })).toBe(false);
     expect(isVerifiedResolution({ verificationStatus: "VERIFIED" })).toBe(true);
+    expect(pickVerifiedOwnedResolution(7, [{ userId: 8, verificationStatus: "VERIFIED", outcome: "YES" }, { userId: 7, verificationStatus: "VERIFIED", outcome: "NO" }])).toMatchObject({ userId: 7, outcome: "NO" });
     expect(revisionBelongsToUser({ userId: 7 }, 7)).toBe(true);
     expect(revisionBelongsToUser({ userId: 7 }, 8)).toBe(false);
     expect(resolutionBelongsToUser({ userId: 7 }, 7)).toBe(true);
@@ -189,6 +191,25 @@ describe("Decision Receipt revision and resolution safeguards", () => {
   });
 });
 
+describe("Verified outcome scoring and calibration", () => {
+  it("scores only verified non-void outcomes and computes transparent metrics", () => {
+    const correct = scoreVerifiedOutcome(11, { probabilityBps: 8_000, direction: "UP" }, { outcome: "YES", verificationStatus: "VERIFIED" });
+    const incorrect = scoreVerifiedOutcome(12, { probabilityBps: 8_000, direction: "UP" }, { outcome: "NO", verificationStatus: "VERIFIED" });
+    expect(correct).toMatchObject({ receiptId: 11, brierScoreBps: 400, directionalCorrect: true });
+    expect(incorrect).toMatchObject({ receiptId: 12, brierScoreBps: 6_400, directionalCorrect: false });
+    expect(scoreVerifiedOutcome(13, { probabilityBps: 5_000, direction: "UP" }, { outcome: "YES", verificationStatus: "SUBMITTED" })).toBeNull();
+    expect(scoreVerifiedOutcome(14, { probabilityBps: 5_000, direction: "UP" }, { outcome: "VOID", verificationStatus: "VERIFIED" })).toBeNull();
+
+    const metrics = calculateCalibrationMetrics([correct!, incorrect!], 2);
+    expect(metrics.verifiedCount).toBe(2);
+    expect(metrics.excludedCount).toBe(2);
+    expect(metrics.directionalAccuracyPct).toBe(50);
+    expect(metrics.meanBrierScoreBps).toBe(3_400);
+    expect(metrics.calibrationStatus).toBe("INSUFFICIENT_SAMPLE");
+    expect(metrics.bins.find(bin => bin.count === 2)).toMatchObject({ predictedBps: 8_000, observedBps: 5_000 });
+  });
+});
+
 describe("Decision Receipt v1 protected procedures", () => {
   it("requires authentication for create, list, detail, revise, and evidence submission", async () => {
     const caller = appRouter.createCaller(unauthenticatedContext());
@@ -206,6 +227,7 @@ describe("Decision Receipt v1 protected procedures", () => {
     await expect(caller.receipts.getMineById({ id: 1 })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(caller.receipts.revise({ receiptId: 1, direction: "UP", probabilityBps: 6_000, confidence: "HIGH", thesis: "updated", counterThesis: "risk" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(caller.receipts.submitResolutionEvidence({ receiptId: 1, outcome: "YES", sourceUrl: "https://example.com", evidenceSummary: "evidence" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.receipts.metrics()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     await expect(caller.receipts.verifyResolutionEvidence({ resolutionId: 1, status: "VERIFIED" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
