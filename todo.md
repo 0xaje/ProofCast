@@ -137,4 +137,4 @@
 - [x] Write a comprehensive README covering Proofcast’s thesis, architecture, local setup, live-demo instructions, safety boundaries, and contribution workflow.
 - [ ] Add an open-source license and a safe `.env.example` file that contains only non-secret configuration names and instructions: the MIT license is added and safe variable guidance is documented in the README, but the managed project currently prevents writing a raw `.env.example` file.
 - [x] Add GitHub Actions CI to install dependencies, run tests, typecheck, and build on pushes and pull requests.
-- [ ] Validate the new repository foundation locally, publish it to public `main`, and verify the remote commit.
+- [x] Validate the new repository foundation locally, publish it to public `main`, and verify the remote commit: tests, typecheck, and build passed; public `main` matches `f305a77`.
