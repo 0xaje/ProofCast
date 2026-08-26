@@ -10,5 +10,4 @@ import MarketDecision from "./pages/MarketDecision";
 import ProofProfile from "./pages/ProofProfile";
 
 function Router() { return <Switch><Route path="/" component={Home} /><Route path="/market" component={MarketDecision} /><Route path="/proof" component={ProofProfile} /><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>; }
-
 export default function App() { return <ErrorBoundary><ThemeProvider defaultTheme="dark"><TooltipProvider><Toaster /><Router /></TooltipProvider></ThemeProvider></ErrorBoundary>; }
