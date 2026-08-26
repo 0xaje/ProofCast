@@ -75,3 +75,20 @@ The interface uses representative static snapshots only as clearly labeled demo 
 - The rail, proof seal, wordmark, workspace orientation, and snapshot state are mandatory on every product route before page-specific content.
 - Every primary view uses an operator-surface layout with a dominant analysis area and a narrower evidence or status instrument where the content permits.
 - Market / EventForge / You probability bands are recurring Proofcast instruments in the Command Center, Market Decision, and Decision Receipt.
+
+## Palette Revision: Mineral Signal Room
+
+The Signal Room is now deliberately lighter without becoming a generic blue SaaS dashboard or a beige research-paper interface. The page foundation is **Lilac Mineral** (`#E8E0E8`), a softened grey-violet canvas that gives the product a recognisable atmosphere while keeping long analytical sessions comfortable. Surfaces use **Chalk** (`#FFFAF4`) so evidence panels feel clean and readable, while the permanent orientation rail uses **Plum Ink** (`#38223A`) to preserve the command-room identity.
+
+| Semantic role | Color | Intended use |
+|---|---:|---|
+| Product canvas | `#E8E0E8` | Page background and subtle gridded atmospheric field |
+| Primary surface | `#FFFAF4` | Cards, evidence panels, and input surfaces |
+| Orientation rail | `#38223A` | Persistent navigation, workspace status, and brand anchor |
+| Verified signal / action | `#9C5148` | Live state, primary actions, and verified attention |
+| Model reference | `#704464` | EventForge and analytical comparison cues |
+| Watch / caution | `#9D6A31` | Stale, warning, and risk-boundary information |
+| Primary text | `#2D2330` | Headings, values, and high-priority body text |
+| Secondary text | `#70655E` | Explanations, labels, and context |
+
+This palette keeps **semantic meaning** stable: oxide signals verified attention and primary action, aubergine marks model interpretation, ochre is reserved for caution, and plum anchors the operator workspace. The visual identity should remain warm-mineral and compositional, never revert to a standard navy SaaS background or a paper-dominant workspace.

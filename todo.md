@@ -34,3 +34,20 @@
 - [x] Verify that a failed snapshot request renders an error state rather than remaining in checking mode.
 - [x] Record the rendered error-state evidence for the rail and Market Decision before checkpointing.
 - [x] Persist the browser-confirmed error-state evidence in the project validation record.
+
+## Signal Room palette refresh
+
+- [x] Define and document a lighter, distinctive Proofcast palette that avoids the existing common dark-blue dashboard aesthetic: lilac mineral canvas, plum rail, oxide action tone, aubergine analysis tone, and ochre warning tone.
+- [x] Update shared backgrounds, surfaces, borders, status tones, navigation, and the global shell to the new palette.
+- [x] Retune page-level accents, data visualizations, and readable text contrast across all Signal Room routes.
+- [x] Verify desktop and mobile presentation, typecheck, build, and prepare the visual refresh checkpoint.
+
+## Palette system hardening
+
+- [x] Document the approved palette in a reusable design note with named color and semantic usage guidance.
+- [x] Replace temporary global color-override selectors with a scoped Mineral Signal design system rooted at the shared Proofcast shell.
+- [x] Record final visual evidence for the distinctive rail, navigation, status tones, and contrast on the refreshed routes: desktop and mobile views retain a plum rail, lilac canvas, chalk surfaces, and readable oxide/aubergine/ochre semantics.
+- [x] Inspect and record final browser evidence for the Command Center, Market Decision, and Proof Profile palette treatment.
+- [x] Apply necessary route-specific contrast refinements: verified the shared semantic treatment keeps each route readable without additional page-only overrides.
+- [x] Record loaded-state evidence for the market cards, probability comparison, order book, status chips, and empty-state surfaces on the final palette.
+- [x] Persist standalone final palette evidence for loaded market and Proof Profile empty-state surfaces.
