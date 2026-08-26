@@ -10,8 +10,8 @@
 
 - [x] Inspect the configured remote, branch, commit history, and uncommitted changes.
 - [x] Identify obsolete tracked project material and confirm the safe cleanup scope: the working tree contains the current codebase; older versions exist only in Git history.
-- [ ] Commit the unified Signal Room codebase and push it to the configured remote.
-- [ ] Verify the remote branch includes the new commit and report the result.
+- [x] Commit the unified Signal Room codebase and push it to the configured remote.
+- [x] Verify the remote branch includes the new commit and report the result: `origin/main` matches checkpoint `f89c797`.
 
 ## DreamDEX real-data integration spike
 
@@ -19,7 +19,7 @@
 - [x] Determine whether a secure backend data proxy is required for reliable production access: use a server-validated official SDK integration as the single source of truth.
 - [x] Upgrade the project architecture for the selected server-validated data layer.
 - [x] Implement real market snapshot retrieval with LIVE, STALE, and UNAVAILABLE handling.
-- [x] Validate provenance and disable all execution controls; live-source checkpoint remains to be created.
+- [x] Validate provenance, disable all execution controls, and create the live-source checkpoint.
 
 ## Full-stack upgrade recovery
 
