@@ -130,3 +130,11 @@
 - [x] Configure the target public remote without losing the latest Proofcast project history.
 - [x] Push the latest complete Proofcast codebase to the target public repository.
 - [x] Verify the public repository contains the current project baseline and report the result: public `main` matches local commit `926d066`.
+
+## Open-source repository foundation
+
+- [x] Audit current package scripts, runtime configuration, and public-repository files for accurate contribution guidance.
+- [x] Write a comprehensive README covering Proofcast’s thesis, architecture, local setup, live-demo instructions, safety boundaries, and contribution workflow.
+- [ ] Add an open-source license and a safe `.env.example` file that contains only non-secret configuration names and instructions: the MIT license is added and safe variable guidance is documented in the README, but the managed project currently prevents writing a raw `.env.example` file.
+- [x] Add GitHub Actions CI to install dependencies, run tests, typecheck, and build on pushes and pull requests.
+- [ ] Validate the new repository foundation locally, publish it to public `main`, and verify the remote commit.
