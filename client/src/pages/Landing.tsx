@@ -2,6 +2,7 @@
 import { Link } from "wouter";
 import { ArrowDownRight, ArrowUpRight, Check, CircleDotDashed, Fingerprint, ScanLine, ShieldCheck, Trophy, GitCompareArrows } from "lucide-react";
 import { HeroInstrument } from "@/components/HeroInstrument";
+import { CustomConnectButton } from "@/components/CustomConnectButton";
 
 const proofSteps = [
   { number: "01", title: "Observe", detail: "Read the market without confusing its price for your own judgement.", icon: ScanLine },
@@ -26,9 +27,12 @@ export default function Landing() {
           <Link href="/leaderboard">Leaderboard</Link>
           <Link href="/proof">Proof Ledger</Link>
         </div>
-        <Link href="/signal" className="pl-nav-cta">
-          Enter Signal Room <ArrowUpRight size={15} />
-        </Link>
+        <div className="flex items-center gap-3">
+          <CustomConnectButton compact />
+          <Link href="/signal" className="pl-nav-cta">
+            Enter Signal Room <ArrowUpRight size={15} />
+          </Link>
+        </div>
       </nav>
 
       <main>

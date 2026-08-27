@@ -1,8 +1,10 @@
 /* Proofcast / Signal Room: shared persistent rail and utility bar; evidence-led navigation across every route. */
 import { Link, useLocation } from "wouter";
-import { Bell, Compass, FileCheck2, GitCompareArrows, Menu, Radio, RefreshCw, Search, Settings2, Trophy, WalletCards, X } from "lucide-react";
+import { Bell, Compass, FileCheck2, GitCompareArrows, Menu, Radio, RefreshCw, Trophy, X } from "lucide-react";
 import { ReactNode, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { CustomConnectButton } from "@/components/CustomConnectButton";
+import { useWallet } from "@/contexts/WalletContext";
 
 const navItems = [
   { href: "/signal", label: "Signal room", icon: Compass },
@@ -48,65 +50,17 @@ function liveLabel(state: "LIVE" | "STALE" | "UNAVAILABLE" | "ERROR" | undefined
   return "Live data unavailable";
 }
 
-import { useWallet } from "@/contexts/WalletContext";
-
-function WalletHeaderControl() {
-  const { address, isConnected, isConnecting, isCorrectNetwork, balance, connect, disconnect, switchNetwork } = useWallet();
-
-  if (!isConnected) {
-    return (
-      <button
-        onClick={connect}
-        disabled={isConnecting}
-        className="flex h-9 items-center gap-2 rounded-xl border border-[#d7f36b]/40 bg-[#d7f36b]/10 px-3.5 text-[11px] font-bold text-[#d7f36b] shadow-[0_0_15px_rgba(215,243,107,0.12)] transition-all hover:bg-[#d7f36b]/20 hover:border-[#d7f36b] active:scale-95"
-      >
-        <WalletCards size={14} className={isConnecting ? "animate-spin" : ""} />
-        {isConnecting ? "Connecting…" : "Connect Somnia Wallet"}
-      </button>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      {!isCorrectNetwork ? (
-        <button
-          onClick={switchNetwork}
-          className="flex h-9 items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/15 px-3 text-[10px] font-bold text-amber-300 hover:bg-amber-500/25"
-          title="Switch to Somnia Shannon Testnet"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
-          Switch to Somnia Shannon
-        </button>
-      ) : (
-        <div className="hidden h-9 items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 text-[10px] font-mono font-medium text-emerald-300 sm:flex">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          {balance !== null ? `${balance} STT` : "Somnia Shannon"}
-        </div>
-      )}
-
-      <button
-        onClick={disconnect}
-        className="flex h-9 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 font-mono text-[11px] text-white hover:border-white/30 hover:bg-white/10"
-        title="Connected to Somnia Shannon. Click to disconnect."
-      >
-        <span className="h-2 w-2 rounded-full bg-[#d7f36b]" />
-        {address ? `${address.slice(0, 6)}…${address.slice(-4)}` : ""}
-      </button>
-    </div>
-  );
-}
-
 function RailContent({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
   const snapshot = trpc.dreamdex.snapshot.useQuery(undefined, { refetchInterval: 15_000, retry: 1 });
-  const { address, isConnected, isCorrectNetwork } = useWallet();
+  const { address, isConnected } = useWallet();
   const data = snapshot.data;
   const connectionState = snapshot.isError ? "ERROR" : data?.state;
   const connectionMessage = snapshot.isError ? "Proofcast could not reach its verified DreamDEX snapshot procedure. Market values are withheld until a successful retry." : data?.message;
   return <>
     <Link href="/" onClick={onNavigate} className="flex items-center gap-3 px-5 py-6"><img src="/manus-storage/proofcast-mark_6cbda10a.png" alt="Proofcast proof seal" className="h-9 w-9 rounded-xl border border-[#d7f36b]/25 bg-[#d7f36b]/10 shadow-[0_0_20px_rgba(215,243,107,0.15)]" /><div><div className="font-display text-[18px] font-semibold tracking-[-0.07em] text-white">proof<span className="text-[#d7f36b]">cast</span></div><div className="text-[9px] uppercase tracking-[0.22em] text-[#6f7b8f]">Proof instrument / 01</div></div></Link>
     <div className="px-4 pt-8"><div className="px-3 pb-3 text-[9px] font-bold uppercase tracking-[0.22em] text-[#697487]">Evidence workspace</div><nav className="space-y-1">{navItems.map(({ href, label, icon: Icon }) => { const active = location.startsWith(href); return <Link key={href} href={href} onClick={onNavigate} className={`flex items-center justify-between rounded-xl px-3 py-3 text-[12px] transition-all duration-200 ${active ? "bg-white/[0.08] text-white shadow-[inset_0_0_1px_rgba(255,255,255,0.03)] border-l-2 border-[#d7f36b]" : "text-[#8b96a8] hover:bg-white/[0.04] hover:text-white"}`}><span className="flex items-center gap-3"><Icon size={16} className={active ? "text-[#d7f36b]" : "text-[#687387]"} />{label}</span>{active && <span className="text-[#d7f36b]">›</span>}</Link>; })}</nav><div className="mx-3 mt-7 border-l-2 border-[#d7f36b] pl-3 text-[10px] leading-4 text-[#8993a4]">Market signal, forecast commitment, and proof receipt stay deliberately separate.</div></div>
-    <div className="mt-auto p-4"><div className="rounded-2xl border border-[#d7f36b]/15 bg-[#d7f36b]/[0.035] p-4"><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.17em] text-[#d7f36b]"><Radio size={13} /> Connection</div><div className="mt-3 flex items-center justify-between gap-3"><div className="text-[12px] font-medium text-white">{liveLabel(connectionState)}</div><StatusChip tone={statusTone(connectionState)}>{connectionState ?? "checking"}</StatusChip></div><div className="mt-2 text-[11px] leading-5 text-[#8993a4]">{connectionMessage ?? "Checking the verified DreamDEX Event Contract source."}</div><button onClick={() => snapshot.refetch()} disabled={snapshot.isFetching} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#d7f36b] py-2.5 text-[11px] font-bold text-[#10140d] disabled:cursor-wait disabled:opacity-55"><RefreshCw size={14} className={snapshot.isFetching ? "animate-spin" : ""} /> {snapshot.isFetching ? "Verifying source" : connectionState === "ERROR" ? "Retry verified source" : "Refresh verified data"}</button></div><div className="mt-4 flex items-center gap-3 border-t border-white/[0.07] pt-4"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#202937] text-[10px] font-bold text-[#d7f36b] border border-[#d7f36b]/30">AO</div><div><div className="text-[11px] font-semibold text-white">{isConnected ? "Somnia Wallet Connected" : "Operator workspace"}</div><div className="text-[10px] text-[#677285] font-mono">{isConnected && address ? `${address.slice(0, 8)}…` : "Non-custodial proof layer"}</div></div><Settings2 size={14} className="ml-auto text-[#677285]" /></div></div>
+    <div className="mt-auto p-4"><div className="rounded-2xl border border-[#d7f36b]/15 bg-[#d7f36b]/[0.035] p-4"><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.17em] text-[#d7f36b]"><Radio size={13} /> Connection</div><div className="mt-3 flex items-center justify-between gap-3"><div className="text-[12px] font-medium text-white">{liveLabel(connectionState)}</div><StatusChip tone={statusTone(connectionState)}>{connectionState ?? "checking"}</StatusChip></div><div className="mt-2 text-[11px] leading-5 text-[#8993a4]">{connectionMessage ?? "Checking the verified DreamDEX Event Contract source."}</div><button onClick={() => snapshot.refetch()} disabled={snapshot.isFetching} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#d7f36b] py-2.5 text-[11px] font-bold text-[#10140d] disabled:cursor-wait disabled:opacity-55"><RefreshCw size={14} className={snapshot.isFetching ? "animate-spin" : ""} /> {snapshot.isFetching ? "Verifying source" : connectionState === "ERROR" ? "Retry verified source" : "Refresh verified data"}</button></div><div className="mt-4 flex items-center gap-3 border-t border-white/[0.07] pt-4"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#202937] text-[10px] font-bold text-[#d7f36b] border border-[#d7f36b]/30">AO</div><div><div className="text-[11px] font-semibold text-white">{isConnected ? "Web3 Wallet Connected" : "Operator workspace"}</div><div className="text-[10px] text-[#677285] font-mono">{isConnected && address ? `${address.slice(0, 8)}…` : "Non-custodial proof layer"}</div></div></div></div>
   </>;
 }
 
@@ -117,7 +71,6 @@ export function SignalShell({ children }: { children: ReactNode }) {
   return <div className="pc-shell min-h-screen bg-[#080b10] text-[#f5f6f2] selection:bg-[#d7f36b] selection:text-[#10140d]"><div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_78%_0%,rgba(45,68,133,0.16),transparent_28%),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] [background-size:auto,72px_100%]" />
     <aside className="fixed inset-y-0 z-40 flex w-[248px] flex-col border-r border-white/[0.07] bg-[#0a0e14]/96 shadow-[18px_0_60px_rgba(0,0,0,0.22)] backdrop-blur-xl max-lg:hidden"><RailContent /></aside>
     {mobileOpen && <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm lg:hidden"><aside className="flex h-full w-[290px] flex-col border-r border-white/[0.08] bg-[#0a0e14] shadow-2xl"><div className="flex items-center justify-end px-4 pt-4"><button onClick={() => setMobileOpen(false)} className="rounded-lg border border-white/10 p-2 text-[#8b96a8]"><X size={16} /></button></div><RailContent onNavigate={() => setMobileOpen(false)} /></aside></div>}
-    <div className="relative lg:ml-[248px]"><header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-white/[0.07] bg-[#080b10]/86 px-5 backdrop-blur-xl sm:px-8 lg:px-12"><div className="flex items-center gap-3"><div className="flex items-center gap-2"><img src="/manus-storage/proofcast-mark_6cbda10a.png" alt="" className="h-6 w-6 rounded-md border border-[#d7f36b]/20 bg-[#d7f36b]/10" /><span className="font-display text-[14px] font-semibold tracking-[-0.06em] text-white">proof<span className="text-[#d7f36b]">cast</span></span></div><span className="hidden h-4 w-px bg-white/10 sm:block" /><div className="hidden items-center gap-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#6f7b8f] sm:flex"><span className={`h-2 w-2 rounded-full ${connectionState === "LIVE" ? "animate-pulse bg-[#d7f36b]" : "bg-[#e9b65b]"}`} /> DreamDEX mainnet / {connectionState ?? "checking"}</div></div><div className="flex items-center gap-3"><WalletHeaderControl /><button aria-label="Notifications" className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] text-[#8490a3] hover:text-white"><Bell size={15} /></button><button aria-label="Open navigation" onClick={() => setMobileOpen(true)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] text-[#8490a3] lg:hidden"><Menu size={16} /></button></div></header><main className="mx-auto max-w-[1480px] px-5 py-8 sm:px-8 lg:px-12 lg:py-12">{children}</main></div>
+    <div className="relative lg:ml-[248px]"><header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-white/[0.07] bg-[#080b10]/86 px-5 backdrop-blur-xl sm:px-8 lg:px-12"><div className="flex items-center gap-3"><div className="flex items-center gap-2"><img src="/manus-storage/proofcast-mark_6cbda10a.png" alt="" className="h-6 w-6 rounded-md border border-[#d7f36b]/20 bg-[#d7f36b]/10" /><span className="font-display text-[14px] font-semibold tracking-[-0.06em] text-white">proof<span className="text-[#d7f36b]">cast</span></span></div><span className="hidden h-4 w-px bg-white/10 sm:block" /><div className="hidden items-center gap-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#6f7b8f] sm:flex"><span className={`h-2 w-2 rounded-full ${connectionState === "LIVE" ? "animate-pulse bg-[#d7f36b]" : "bg-[#e9b65b]"}`} /> DreamDEX mainnet / {connectionState ?? "checking"}</div></div><div className="flex items-center gap-3"><CustomConnectButton /><button aria-label="Notifications" className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] text-[#8490a3] hover:text-white"><Bell size={15} /></button><button aria-label="Open navigation" onClick={() => setMobileOpen(true)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] text-[#8490a3] lg:hidden"><Menu size={16} /></button></div></header><main className="mx-auto max-w-[1480px] px-5 py-8 sm:px-8 lg:px-12 lg:py-12">{children}</main></div>
   </div>;
 }
-
