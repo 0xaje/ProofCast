@@ -18,11 +18,18 @@ import {
 import type { DreamDexMarketSnapshot, DreamDexSnapshot } from "./dreamdex";
 import { getDb } from "./db";
 import { calculateCalibrationMetrics, scoreVerifiedOutcome, selectForecastAtResolution } from "./scoring";
+import { computeDeterministicModel } from "./eventforge/model";
+import { evaluateMarketQuality } from "./marketQuality";
+import { calculateExecutableEdge } from "./executableEdge";
 
 export type CreateReceiptInput = Pick<
   InsertForecast,
   "marketId" | "direction" | "probabilityBps" | "confidence" | "thesis" | "counterThesis"
->;
+> & {
+  tradeTxHash?: string;
+  tradeOrderId?: string;
+  tradeStatus?: string;
+};
 
 export type ResolutionEvidenceInput = {
   receiptId: number;
@@ -36,6 +43,8 @@ export type ResolutionVerificationStatus = "VERIFIED" | "REJECTED";
 export function hashEvidenceCommitment(outcome: ResolutionEvidenceInput["outcome"], sourceUrl: string, evidenceSummary: string): string {
   return createHash("sha256").update(JSON.stringify({ outcome, sourceUrl: sourceUrl.trim(), evidenceSummary: evidenceSummary.trim() })).digest("hex");
 }
+
+export const hashResolutionEvidence = hashEvidenceCommitment;
 
 export function validateEvidenceSourceUrl(rawUrl: string): string {
   const url = new URL(rawUrl.trim());
@@ -181,21 +190,70 @@ export async function createDecisionReceipt(
   if (snapshot.state !== "LIVE" || snapshot.asOf === null) throw new Error("A fresh verified market snapshot is required to create a receipt");
   if (market.marketState !== "TRADING") throw new Error("A receipt can only be committed while the selected market is trading");
 
+  const modelOutput = computeDeterministicModel(market);
+  const qualityOutput = evaluateMarketQuality(market);
+  const edgeOutput = calculateExecutableEdge(input.probabilityBps, input.direction, market, modelOutput.modelProbabilityBps);
+
   const db = database ?? await getDb();
   if (!db) throw new Error("Database is not configured");
 
   const result = await db.transaction(async tx => {
     const snapshotResult = await tx.insert(marketSnapshots).values(buildMarketSnapshotInsert(snapshot, market));
     const marketSnapshotId = insertId(snapshotResult);
-    const forecastResult = await tx.insert(forecasts).values({ ...input, userId });
+    
+    const forecastResult = await tx.insert(forecasts).values({
+      userId,
+      marketId: input.marketId,
+      direction: input.direction,
+      probabilityBps: input.probabilityBps,
+      confidence: input.confidence,
+      thesis: input.thesis,
+      counterThesis: input.counterThesis,
+    });
     const forecastId = insertId(forecastResult);
-    const receiptResult = await tx.insert(decisionReceipts).values({ userId, forecastId, marketSnapshotId });
+    
+    const receiptResult = await tx.insert(decisionReceipts).values({
+      userId,
+      forecastId,
+      marketSnapshotId,
+      modelProbabilityBps: modelOutput.modelProbabilityBps,
+      modelConfidence: modelOutput.modelConfidence,
+      marketQuality: qualityOutput.state,
+      executablePriceBps: edgeOutput.executablePriceBps,
+      executableEdgeBps: edgeOutput.executableEdgeBps,
+      tradeTxHash: input.tradeTxHash || null,
+      tradeOrderId: input.tradeOrderId || null,
+      tradeStatus: input.tradeStatus || "NONE",
+    });
     return insertId(receiptResult);
   });
 
   const created = await receiptQuery(userId, result);
   if (!created[0]) throw new Error("Receipt was created but could not be read back");
   return shapeReceipt(created[0]);
+}
+
+export async function anchorDecisionReceipt(
+  userId: number,
+  receiptId: number,
+  anchorTxHash: string,
+  anchorAddress: string,
+  database?: ReceiptDatabase,
+) {
+  const db = database ?? await getDb();
+  if (!db) throw new Error("Database is not configured");
+  await assertOwnedReceipt(db, userId, receiptId);
+
+  await db
+    .update(decisionReceipts)
+    .set({
+      anchorTxHash: anchorTxHash.trim(),
+      anchorAddress: anchorAddress.trim(),
+      anchorTimestamp: new Date(),
+    })
+    .where(and(eq(decisionReceipts.id, receiptId), eq(decisionReceipts.userId, userId)));
+
+  return await getDecisionReceipt(userId, receiptId);
 }
 
 export async function createForecastRevision(

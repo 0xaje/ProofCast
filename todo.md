@@ -227,3 +227,39 @@
 - [x] Add an admin-only review route and reviewer-note controls with truthful source-integrity states.
 - [x] Add owner-scoped CSV export for verified calibration history.
 - [x] Add schema, API, ownership, hash, notes, CSV, and browser coverage; run validation and checkpoint the release.
+
+## DreamDEX Event Contracts Capability Verification (Priority 0)
+
+- [x] Inspect official `@somnia-chain/markets-sdk` v0.28.0 APIs, binary pool interfaces, order parameters, resolution events, and payout redemption.
+- [x] Produce comprehensive `docs/dreamdex-capabilities.md` capability report.
+
+## Automated DreamDEX Resolution Engine (Priority 1)
+
+- [x] Implement backend `server/resolutionWorker.ts` to monitor unresolved receipts against live Somnia event contracts.
+- [x] Automatically extract on-chain `winningOutcome` and create verified `receipt_resolutions` records with SHA-256 evidence hashes.
+- [x] Trigger automated Brier scoring and calibration progression.
+
+## EventForge Intelligence v1 (Priority 2)
+
+- [x] Build Layer A `server/eventforge/model.ts` deterministic probability and confidence calculation.
+- [x] Build Layer B `server/eventforge/reasoning.ts` structured AI analysis (Bull/Bear/Risks/Disagreement).
+- [x] Wire live EventForge comparison bar and intelligence drawer in `MarketDecision.tsx`.
+
+## Somnia Smart Contract Anchoring (Priority 4)
+
+- [x] Write lightweight `contracts/ProofCastAnchor.sol` for anchoring SHA-256 hashes to Somnia blockchain.
+- [x] Add receipt anchoring procedure and Somnia Shannon Block Explorer links in `ProofProfile.tsx`.
+
+## Market Quality & Executable Edge (Priorities 5 & 6)
+
+- [x] Implement deterministic `TRADEABLE` / `WATCH` / `NO_TRADE` engine in `server/marketQuality.ts`.
+- [x] Implement true `server/executableEdge.ts` calculating net edge after spread crossing and slippage.
+- [x] Integrate live quality chips and edge metrics in Market Decision and Decision Receipts.
+
+## Decision Receipt Schema Evolution (Priority 7 & 8)
+
+- [x] Extend `drizzle/schema.ts` with model estimates, market quality, executable edge, and Somnia anchor fields.
+- [x] Generate migration `0003_eventforge_execution_anchoring.sql`.
+- [x] Add 7 new passing unit tests in `server/eventforge.test.ts` (total 28 passing tests).
+- [x] Verify full TypeScript check and production build.
+

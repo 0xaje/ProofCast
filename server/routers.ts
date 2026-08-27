@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getDreamDexSnapshot } from "./dreamdex";
 import { getDb } from "./db";
 import {
+  anchorDecisionReceipt,
   createDecisionReceipt,
   createForecastRevision,
   getCalibrationMetrics,
@@ -14,6 +15,11 @@ import {
   submitResolutionEvidence,
   verifyResolutionEvidence,
 } from "./receipts";
+import { computeDeterministicModel } from "./eventforge/model";
+import { generateEventForgeReasoning } from "./eventforge/reasoning";
+import { evaluateMarketQuality } from "./marketQuality";
+import { calculateExecutableEdge } from "./executableEdge";
+import { pollAndResolveDreamDexReceipts } from "./resolutionWorker";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -25,9 +31,12 @@ export const receiptInputSchema = z.object({
   confidence: z.enum(["LOW", "MEDIUM", "HIGH"]),
   thesis: z.string().trim().min(1).max(2_000),
   counterThesis: z.string().trim().min(1).max(2_000),
+  tradeTxHash: z.string().trim().max(128).optional(),
+  tradeOrderId: z.string().trim().max(64).optional(),
+  tradeStatus: z.string().trim().max(32).optional(),
 });
 
-export const revisionInputSchema = receiptInputSchema.omit({ marketId: true });
+export const revisionInputSchema = receiptInputSchema.omit({ marketId: true, tradeTxHash: true, tradeOrderId: true, tradeStatus: true });
 
 export const resolutionEvidenceInputSchema = z.object({
   receiptId: z.number().int().positive(),
@@ -40,6 +49,12 @@ export const resolutionReviewInputSchema = z.object({
   resolutionId: z.number().int().positive(),
   status: z.enum(["VERIFIED", "REJECTED"]),
   reviewerNotes: z.string().trim().max(2_000).optional(),
+});
+
+export const anchorInputSchema = z.object({
+  receiptId: z.number().int().positive(),
+  anchorTxHash: z.string().trim().min(10).max(128),
+  anchorAddress: z.string().trim().min(10).max(64),
 });
 
 function receiptError(error: unknown, fallback: string): TRPCError {
@@ -74,6 +89,63 @@ export const appRouter = router({
       .query(({ input }) => getDreamDexSnapshot(input?.limit ?? 3)),
   }),
 
+  eventforge: router({
+    /** Dual-layer EventForge Intelligence: Layer A deterministic calculation + Layer B structured AI reasoning */
+    analyze: publicProcedure
+      .input(z.object({ marketId: z.string().trim().min(1) }))
+      .query(async ({ input }) => {
+        const snapshot = await getDreamDexSnapshot(6);
+        const market = snapshot.markets.find(m => m.marketId === input.marketId);
+        if (!market) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Market not found in verified snapshot" });
+        }
+        const model = computeDeterministicModel(market);
+        const reasoning = await generateEventForgeReasoning(market, model);
+        const quality = evaluateMarketQuality(market);
+        return {
+          marketId: input.marketId,
+          model,
+          reasoning,
+          quality,
+        };
+      }),
+  }),
+
+  marketQuality: router({
+    /** Priority 5: Evaluates market quality and liquidity bounds */
+    evaluate: publicProcedure
+      .input(z.object({ marketId: z.string().trim().min(1) }))
+      .query(async ({ input }) => {
+        const snapshot = await getDreamDexSnapshot(6);
+        const market = snapshot.markets.find(m => m.marketId === input.marketId);
+        if (!market) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Market not found in verified snapshot" });
+        }
+        return evaluateMarketQuality(market);
+      }),
+  }),
+
+  executableEdge: router({
+    /** Priority 6: Computes true executable edge factoring in spread and slippage */
+    calculate: publicProcedure
+      .input(
+        z.object({
+          marketId: z.string().trim().min(1),
+          userForecastBps: z.number().int().min(100).max(9900),
+          direction: z.enum(["UP", "DOWN"]),
+        })
+      )
+      .query(async ({ input }) => {
+        const snapshot = await getDreamDexSnapshot(6);
+        const market = snapshot.markets.find(m => m.marketId === input.marketId);
+        if (!market) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Market not found in verified snapshot" });
+        }
+        const model = computeDeterministicModel(market);
+        return calculateExecutableEdge(input.userForecastBps, input.direction, market, model.modelProbabilityBps);
+      }),
+  }),
+
   receipts: router({
     create: protectedProcedure.input(receiptInputSchema).mutation(async ({ ctx, input }) => {
       try {
@@ -81,6 +153,20 @@ export const appRouter = router({
         return await createDecisionReceipt(ctx.user.id, input, snapshot);
       } catch (error) {
         throw receiptError(error, "Unable to create Decision Receipt");
+      }
+    }),
+    anchor: protectedProcedure.input(anchorInputSchema).mutation(async ({ ctx, input }) => {
+      try {
+        return await anchorDecisionReceipt(ctx.user.id, input.receiptId, input.anchorTxHash, input.anchorAddress);
+      } catch (error) {
+        throw receiptError(error, "Unable to anchor Decision Receipt");
+      }
+    }),
+    triggerAutoResolution: publicProcedure.mutation(async () => {
+      try {
+        return await pollAndResolveDreamDexReceipts();
+      } catch (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to run auto resolution" });
       }
     }),
     revise: protectedProcedure

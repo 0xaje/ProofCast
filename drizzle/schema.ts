@@ -86,11 +86,23 @@ export const decisionReceipts = mysqlTable(
     forecastId: int("forecastId").notNull().references(() => forecasts.id),
     marketSnapshotId: int("marketSnapshotId").notNull().references(() => marketSnapshots.id),
     version: int("version").default(1).notNull(),
+    modelProbabilityBps: int("modelProbabilityBps"),
+    modelConfidence: varchar("modelConfidence", { length: 32 }),
+    marketQuality: varchar("marketQuality", { length: 32 }),
+    executablePriceBps: int("executablePriceBps"),
+    executableEdgeBps: int("executableEdgeBps"),
+    anchorTxHash: varchar("anchorTxHash", { length: 128 }),
+    anchorAddress: varchar("anchorAddress", { length: 64 }),
+    anchorTimestamp: timestamp("anchorTimestamp"),
+    tradeTxHash: varchar("tradeTxHash", { length: 128 }),
+    tradeOrderId: varchar("tradeOrderId", { length: 64 }),
+    tradeStatus: varchar("tradeStatus", { length: 32 }).default("NONE"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
     forecastUniqueIdx: uniqueIndex("decision_receipts_forecast_unique").on(table.forecastId),
     userCreatedIdx: index("decision_receipts_user_created_idx").on(table.userId, table.createdAt),
+    anchorTxIdx: index("decision_receipts_anchor_tx_idx").on(table.anchorTxHash),
   }),
 );
 

@@ -1,6 +1,6 @@
 /* Proof Instrument / Market Decision: a local draft becomes a reviewable receipt only after an explicit authenticated commit. */
 import { Link, useSearch } from "wouter";
-import { ArrowDownRight, ArrowUpRight, BookOpen, Check, FileCheck2, LockKeyhole } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BookOpen, Check, FileCheck2, LockKeyhole, Sparkles, ShieldAlert, Cpu, Activity } from "lucide-react";
 import { useState } from "react";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -11,42 +11,483 @@ import { trpc } from "@/lib/trpc";
 type DecisionStage = "DRAFT" | "REVIEW" | "COMMITTED";
 type Confidence = "LOW" | "MEDIUM" | "HIGH";
 
-function timeLabel(seconds: number) { const hours = Math.floor(seconds / 3600); const minutes = Math.floor((seconds % 3600) / 60); return hours ? `${hours}h ${minutes}m` : `${Math.max(0, minutes)}m`; }
-function toneForState(state: string | undefined) { return state === "LIVE" ? "live" as const : state === "STALE" ? "watch" as const : "unavailable" as const; }
+function timeLabel(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours ? `${hours}h ${minutes}m` : `${Math.max(0, minutes)}m`;
+}
+
+function toneForState(state: string | undefined) {
+  return state === "LIVE" ? ("live" as const) : state === "STALE" ? ("watch" as const) : ("unavailable" as const);
+}
+
+function qualityTone(quality: string | undefined) {
+  return quality === "TRADEABLE" ? ("live" as const) : quality === "WATCH" ? ("watch" as const) : ("unavailable" as const);
+}
 
 export default function MarketDecision() {
-  const search = useSearch(); const requestedId = new URLSearchParams(search).get("market");
+  const search = useSearch();
+  const requestedId = new URLSearchParams(search).get("market");
   const auth = useAuth();
   const snapshot = trpc.dreamdex.snapshot.useQuery(undefined, { refetchInterval: 15_000, retry: 1 });
   const utils = trpc.useUtils();
+
   const commitReceipt = trpc.receipts.create.useMutation({
     onSuccess: async () => {
       await utils.receipts.listMine.invalidate();
     },
   });
-  const data = snapshot.data; const state = snapshot.isError ? "ERROR" : data?.state; const market = data?.markets.find(item => item.marketId === requestedId) ?? data?.markets[0];
+
+  const data = snapshot.data;
+  const state = snapshot.isError ? "ERROR" : data?.state;
+  const market = data?.markets.find(item => item.marketId === requestedId) ?? data?.markets[0];
+
+  const eventforgeQuery = trpc.eventforge.analyze.useQuery(
+    { marketId: market?.marketId ?? "" },
+    { enabled: !!market?.marketId, refetchInterval: 20_000 }
+  );
+
   const [stage, setStage] = useState<DecisionStage>("DRAFT");
-  const [forecast, setForecast] = useState(50); const [forecastRevision, setForecastRevision] = useState(0); const [side, setSide] = useState<"UP" | "DOWN">("UP"); const [confidence, setConfidence] = useState<Confidence>("MEDIUM");
-  const [thesis, setThesis] = useState(""); const [counterThesis, setCounterThesis] = useState(""); const [commitError, setCommitError] = useState<string | null>(null);
-  const marketProbability = market?.midPercent ?? market?.lastPricePercent; const gap = marketProbability == null ? null : forecast - marketProbability;
+  const [forecast, setForecast] = useState(50);
+  const [forecastRevision, setForecastRevision] = useState(0);
+  const [side, setSide] = useState<"UP" | "DOWN">("UP");
+  const [confidence, setConfidence] = useState<Confidence>("MEDIUM");
+  const [thesis, setThesis] = useState("");
+  const [counterThesis, setCounterThesis] = useState("");
+  const [commitError, setCommitError] = useState<string | null>(null);
+
+  const marketProbability = market?.midPercent ?? market?.lastPricePercent;
+  const modelProbability = eventforgeQuery.data?.model ? eventforgeQuery.data.model.modelProbabilityBps / 100 : undefined;
+  const marketQuality = eventforgeQuery.data?.quality;
+
+  const gap = marketProbability == null ? null : forecast - marketProbability;
+  const modelGap = modelProbability == null || marketProbability == null ? null : modelProbability - marketProbability;
+
+  // True executable price calculation
+  const bestAsk = market?.bestAskPercent ?? marketProbability ?? 50;
+  const bestBid = market?.bestBidPercent ?? marketProbability ?? 50;
+  const executablePrice = side === "UP" ? bestAsk : 100 - bestBid;
+  const executableEdge = forecast - executablePrice - (market?.spreadBps && market.spreadBps > 400 ? 0.75 : 0.3);
+
   const comparisonRows = [
     { label: "Market", value: marketProbability, kind: "source" as const, className: "market" },
-    { label: "EventForge", value: undefined, kind: "source" as const, className: "model" },
+    { label: "EventForge", value: modelProbability, kind: "source" as const, className: "model" },
     { label: "You", value: forecast, kind: "local" as const, className: "you" },
   ];
+
   const canReview = thesis.trim().length > 0 && counterThesis.trim().length > 0;
+
   const handleCommit = () => {
     if (!market) return;
-    if (!auth.isAuthenticated) { setCommitError("Sign in is required to create a private Decision Receipt."); return; }
+    if (!auth.isAuthenticated) {
+      setCommitError("Sign in is required to create a private Decision Receipt.");
+      return;
+    }
     setCommitError(null);
-    commitReceipt.mutate({ marketId: market.marketId, direction: side, probabilityBps: forecast * 100, confidence, thesis: thesis.trim(), counterThesis: counterThesis.trim() }, {
-      onSuccess: () => setStage("COMMITTED"),
-      onError: error => setCommitError(error.message),
-    });
+    commitReceipt.mutate(
+      {
+        marketId: market.marketId,
+        direction: side,
+        probabilityBps: forecast * 100,
+        confidence,
+        thesis: thesis.trim(),
+        counterThesis: counterThesis.trim(),
+      },
+      {
+        onSuccess: () => setStage("COMMITTED"),
+        onError: error => setCommitError(error.message),
+      }
+    );
   };
-  return <SignalShell><div className="pi-workspace">
-    <section className="pi-page-intro"><div><div className="pi-kicker"><span>02</span> Decision surface / sourced</div><h1>Commit only after<br /><em>you inspect the evidence.</em></h1><p>Market metadata is indexer-sourced and its visible YES book is checked from an on-chain binary pool. EventForge and wallet execution remain disconnected.</p></div><div className="pi-status-stack"><StatusChip tone="unavailable">Execution disabled</StatusChip><StatusChip tone={toneForState(state)}>{state ?? "checking"}</StatusChip></div></section>
-    {snapshot.isLoading ? <div className="pi-decision-grid"><div className="pi-panel pi-skeleton" /><div className="pi-panel pi-skeleton" /></div> : !market ? <section className="pi-panel pi-empty-instrument"><BookOpen size={24} /><b>Decision context is unavailable</b><span>{snapshot.isError ? "The verified source query failed. No market or order-book values are shown." : data?.message ?? "No Event Contract was returned."}</span><Link className="pi-action" href="/signal">Return to Signal Room <ArrowUpRight size={15} /></Link></section> : <><section className="pi-decision-grid"><div className="pi-panel pi-decision-main"><div className="pi-panel-head"><div><div className="pi-kicker"><span>Selected signal</span> {market.marketId.slice(0, 18)}…</div><h2>{market.question}</h2><p>{market.asset} Binary Event Contract · closes in <b>{timeLabel(market.secondsToExpiry)}</b> · indexed {market.indexedStatus}</p></div><div className="pi-state-square"><span>On-chain read</span><b>{market.marketState}</b><i>{market.spreadBps == null ? "Spread unavailable" : `${market.spreadBps} bps`}</i></div></div><div className="pi-measures"><div><span>YES midpoint</span><b>{marketProbability == null ? "—" : `${marketProbability.toFixed(1)}%`}</b><i>Best bid / ask derived</i></div><div><span>EventForge</span><b>—</b><i>Model service not connected</i></div><div><span>Time remaining</span><b>{timeLabel(market.secondsToExpiry)}</b><i>On-chain window metadata</i></div></div><div className="pi-comparison"><div className="pi-comparison-head"><div><span>Belief stack</span><b>Market / EventForge / You</b></div><StatusChip tone={toneForState(state)}>{state ?? "checking"}</StatusChip></div>{comparisonRows.map(row => <div key={row.label} className={`pi-comparison-row ${row.className}`}><span>{row.label}</span><div><AnimatedComparisonBar value={row.value} kind={row.kind} sourceAsOf={data?.asOf} localRevision={row.kind === "local" ? forecastRevision : undefined} /></div><b>{typeof row.value === "number" ? `${row.value.toFixed(1)}% UP` : "Not connected"}</b></div>)}<div className="pi-gap-row"><span>Your gap: {gap == null ? "market unavailable" : `${gap >= 0 ? "+" : ""}${gap.toFixed(1)} points`}</span><span>Model gap: unavailable</span></div></div></div>
-      <aside className="pi-panel pi-book-panel"><div className="pi-panel-head"><div><div className="pi-kicker"><span>Evidence column</span> Read-only execution context</div><h2>YES order book</h2></div><BookOpen size={19} /></div><div className="pi-book-head"><span>Ask price</span><span>Size</span></div><div className="pi-book-list">{market.yesAsks.length ? market.yesAsks.map(row => <div key={`a-${row.pricePercent}-${row.quantity}`}><b>{row.pricePercent.toFixed(2)}%</b><span>{row.quantity}</span></div>) : <p>No current YES asks returned.</p>}</div><div className="pi-book-mid"><span>Midpoint</span><b>{marketProbability == null ? "—" : `${marketProbability.toFixed(2)}%`}</b></div><div className="pi-book-list bids">{market.yesBids.length ? market.yesBids.map(row => <div key={`b-${row.pricePercent}-${row.quantity}`}><b>{row.pricePercent.toFixed(2)}%</b><span>{row.quantity}</span></div>) : <p>No current YES bids returned.</p>}</div><div className="pi-lock-note"><LockKeyhole size={14} /> Execution stays unavailable until a future flow can validate status, balance, tick, lot, and liquidity before signing.</div></aside></section>
-      <section className="pi-commit-grid"><div className="pi-panel pi-counter-panel"><div className="pi-kicker"><span>Counter-thesis</span> Make both cases audible</div><h2>The opposing view is part of the evidence.</h2><div className="pi-case-grid"><article><b><ArrowUpRight size={15} /> Bull case</b><p><Check size={13} /> Test a YES thesis against actual asks, depth, and the trading window.</p></article><article><b><ArrowDownRight size={15} /> Bear case</b><p>Markets can lock or thin out between a snapshot and any future write.</p></article></div></div><div className="pi-panel pi-forecast-panel" data-testid="forecast-workflow"><div className="pi-kicker"><span>Local commitment</span> {stage === "DRAFT" ? "Draft only" : stage === "REVIEW" ? "Review before save" : "Receipt committed"}</div><h2>{stage === "DRAFT" ? "Make your forecast specific." : stage === "REVIEW" ? "Review the record before committing." : "Decision Receipt committed."}</h2>{stage !== "COMMITTED" ? <><div className="pi-side-toggle"><button data-testid="forecast-up" onClick={() => { setSide("UP"); setStage("DRAFT"); }} className={side === "UP" ? "active" : ""}>UP</button><button data-testid="forecast-down" onClick={() => { setSide("DOWN"); setStage("DRAFT"); }} className={side === "DOWN" ? "active down" : ""}>DOWN</button></div><div className="pi-forecast-value"><b>{forecast}%</b><span>{side} at expiry<br />{gap == null ? "market unavailable" : `${gap >= 0 ? "+" : ""}${gap.toFixed(1)} points vs market`}</span></div><input data-testid="forecast-slider" aria-label="Forecast probability" type="range" min="1" max="99" value={forecast} onChange={event => { setForecast(Number(event.target.value)); setForecastRevision(revision => revision + 1); setStage("DRAFT"); setCommitError(null); }} /><label className="sr-only" htmlFor="thesis">Forecast thesis</label><textarea id="thesis" data-testid="forecast-thesis" value={thesis} onChange={event => { setThesis(event.target.value); setStage("DRAFT"); }} placeholder="Why might this direction be right?" rows={3} /><label className="sr-only" htmlFor="counter-thesis">Counter thesis</label><textarea id="counter-thesis" data-testid="forecast-counter-thesis" value={counterThesis} onChange={event => { setCounterThesis(event.target.value); setStage("DRAFT"); }} placeholder="What could make this forecast wrong?" rows={3} /><div className="pi-confidence" aria-label="Forecast confidence">{(["LOW", "MEDIUM", "HIGH"] as Confidence[]).map(level => <button key={level} type="button" data-testid={`confidence-${level.toLowerCase()}`} onClick={() => { setConfidence(level); setStage("DRAFT"); }} className={confidence === level ? "active" : ""}>{level}</button>)}</div>{stage === "DRAFT" ? <button data-testid="review-forecast" className="pi-action full" disabled={!canReview} onClick={() => setStage("REVIEW")}><FileCheck2 size={15} /> Review forecast</button> : <div className="pi-review-card"><span>Reviewing {side} at {forecast}% / {confidence} confidence</span><b>{thesis}</b><small>Against: {counterThesis}</small><button data-testid="commit-receipt" className="pi-action full" disabled={commitReceipt.isPending} onClick={handleCommit}>{commitReceipt.isPending ? "Saving receipt…" : "Commit Decision Receipt"}</button><button type="button" className="pi-text-link" onClick={() => setStage("DRAFT")}>Edit draft</button></div>}{commitError && <p className="pi-error-note" role="alert">{commitError} {!auth.isAuthenticated && <button type="button" onClick={() => startLogin()} className="pi-inline-link">Sign in</button>}</p>}</> : <div className="pi-committed-card" data-testid="receipt-committed"><FileCheck2 size={22} /><b>Your evidence is now recorded.</b><span>Receipt saved with a server-captured market snapshot.</span><Link href="/proof" className="pi-action full">Inspect Proof Profile <ArrowUpRight size={15} /></Link></div>}</div></section></>}</div></SignalShell>;
+
+  return (
+    <SignalShell>
+      <div className="pi-workspace">
+        <section className="pi-page-intro">
+          <div>
+            <div className="pi-kicker">
+              <span>02</span> Decision surface / Somnia Event Contracts
+            </div>
+            <h1>
+              Commit only after
+              <br />
+              <em>you inspect the evidence.</em>
+            </h1>
+            <p>
+              Market metadata is indexer-verified, order books read on-chain, and EventForge applies dual-layer deterministic intelligence.
+            </p>
+          </div>
+          <div className="pi-status-stack">
+            <StatusChip tone={qualityTone(marketQuality?.state)}>
+              {marketQuality ? `Quality: ${marketQuality.state}` : "Analyzing Quality"}
+            </StatusChip>
+            <StatusChip tone={toneForState(state)}>{state ?? "checking"}</StatusChip>
+          </div>
+        </section>
+
+        {snapshot.isLoading ? (
+          <div className="pi-decision-grid">
+            <div className="pi-panel pi-skeleton" />
+            <div className="pi-panel pi-skeleton" />
+          </div>
+        ) : !market ? (
+          <section className="pi-panel pi-empty-instrument">
+            <BookOpen size={24} />
+            <b>Decision context is unavailable</b>
+            <span>
+              {snapshot.isError
+                ? "The verified source query failed. No market or order-book values are shown."
+                : data?.message ?? "No Event Contract was returned."}
+            </span>
+            <Link className="pi-action" href="/signal">
+              Return to Signal Room <ArrowUpRight size={15} />
+            </Link>
+          </section>
+        ) : (
+          <>
+            <section className="pi-decision-grid">
+              <div className="pi-panel pi-decision-main">
+                <div className="pi-panel-head">
+                  <div>
+                    <div className="pi-kicker flex items-center justify-between">
+                      <span>
+                        <span className="text-teal-400">DreamDEX Sourced:</span> {market.marketId.slice(0, 18)}…
+                      </span>
+                      <a
+                        href={`https://prd.smk.somnia.host/v1/graphql#market-${market.marketId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] text-teal-400/80 hover:text-teal-300 flex items-center gap-0.5"
+                      >
+                        Inspect Source <ArrowUpRight size={11} />
+                      </a>
+                    </div>
+                    <h2>{market.question}</h2>
+                    <p>
+                      {market.asset} Binary Event Contract · closes in <b>{timeLabel(market.secondsToExpiry)}</b> · indexed {market.indexedStatus}
+                    </p>
+                  </div>
+                  <div className="pi-state-square">
+                    <span>On-chain read</span>
+                    <b>{market.marketState}</b>
+                    <i>{market.spreadBps == null ? "Spread unavailable" : `${market.spreadBps} bps`}</i>
+                  </div>
+                </div>
+
+                <div className="pi-measures">
+                  <div>
+                    <span>YES midpoint</span>
+                    <b>{marketProbability == null ? "—" : `${marketProbability.toFixed(1)}%`}</b>
+                    <i>Best bid / ask derived</i>
+                  </div>
+                  <div>
+                    <span>EventForge Model</span>
+                    <b>{modelProbability == null ? "Calculating…" : `${modelProbability.toFixed(1)}%`}</b>
+                    <i>{eventforgeQuery.data?.model.modelConfidence ?? "Deterministic"} Confidence</i>
+                  </div>
+                  <div>
+                    <span>Executable Edge</span>
+                    <b className={executableEdge > 0 ? "text-emerald-400" : "text-amber-400"}>
+                      {executableEdge > 0 ? `+${executableEdge.toFixed(1)}%` : `${executableEdge.toFixed(1)}%`}
+                    </b>
+                    <i>Net of spread & slippage</i>
+                  </div>
+                </div>
+
+                <div className="pi-comparison">
+                  <div className="pi-comparison-head">
+                    <div>
+                      <span>Belief stack</span>
+                      <b>Market / EventForge / You</b>
+                    </div>
+                    <StatusChip tone={toneForState(state)}>{state ?? "checking"}</StatusChip>
+                  </div>
+
+                  {comparisonRows.map(row => (
+                    <div key={row.label} className={`pi-comparison-row ${row.className}`}>
+                      <span>{row.label}</span>
+                      <div>
+                        <AnimatedComparisonBar
+                          value={row.value}
+                          kind={row.kind}
+                          sourceAsOf={data?.asOf}
+                          localRevision={row.kind === "local" ? forecastRevision : undefined}
+                        />
+                      </div>
+                      <b>{typeof row.value === "number" ? `${row.value.toFixed(1)}% UP` : "Calculating…"}</b>
+                    </div>
+                  ))}
+
+                  <div className="pi-gap-row">
+                    <span>Your gap: {gap == null ? "market unavailable" : `${gap >= 0 ? "+" : ""}${gap.toFixed(1)} points`}</span>
+                    <span>Model gap: {modelGap == null ? "calculating" : `${modelGap >= 0 ? "+" : ""}${modelGap.toFixed(1)} points`}</span>
+                  </div>
+                </div>
+
+                {/* EventForge Layer B Structured Reasoning */}
+                {eventforgeQuery.data?.reasoning && (
+                  <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold text-teal-400">
+                      <Cpu size={14} /> EventForge Layer B AI Intelligence
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      <div className="bg-black/30 p-3 rounded border border-white/5">
+                        <b className="text-emerald-400 block mb-1">Bullish Microstructure</b>
+                        <p className="text-white/70">{eventforgeQuery.data.reasoning.bullCase}</p>
+                      </div>
+                      <div className="bg-black/30 p-3 rounded border border-white/5">
+                        <b className="text-amber-400 block mb-1">Downside Liquidity Risk</b>
+                        <p className="text-white/70">{eventforgeQuery.data.reasoning.bearCase}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-white/50 bg-black/20 p-2 rounded">
+                      <span>💡 {eventforgeQuery.data.reasoning.disagreementAnalysis}</span>
+                      <span className="text-teal-400 font-medium">Uncertainty: {eventforgeQuery.data.reasoning.uncertaintyLevel}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <aside className="pi-panel pi-book-panel">
+                <div className="pi-panel-head">
+                  <div>
+                    <div className="pi-kicker">
+                      <span>Evidence column</span> Read-only execution context
+                    </div>
+                    <h2>YES order book</h2>
+                  </div>
+                  <BookOpen size={19} />
+                </div>
+                <div className="pi-book-head">
+                  <span>Ask price</span>
+                  <span>Size</span>
+                </div>
+                <div className="pi-book-list">
+                  {market.yesAsks.length ? (
+                    market.yesAsks.map(row => (
+                      <div key={`a-${row.pricePercent}-${row.quantity}`}>
+                        <b>{row.pricePercent.toFixed(2)}%</b>
+                        <span>{row.quantity}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p>No current YES asks returned.</p>
+                  )}
+                </div>
+                <div className="pi-book-mid">
+                  <span>Midpoint</span>
+                  <b>{marketProbability == null ? "—" : `${marketProbability.toFixed(2)}%`}</b>
+                </div>
+                <div className="pi-book-list bids">
+                  {market.yesBids.length ? (
+                    market.yesBids.map(row => (
+                      <div key={`b-${row.pricePercent}-${row.quantity}`}>
+                        <b>{row.pricePercent.toFixed(2)}%</b>
+                        <span>{row.quantity}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p>No current YES bids returned.</p>
+                  )}
+                </div>
+                <div className="pi-lock-note">
+                  <Activity size={14} className="text-teal-400" />
+                  Executable ask: <b>{bestAsk.toFixed(1)}%</b> · Executable bid: <b>{bestBid.toFixed(1)}%</b>
+                </div>
+              </aside>
+            </section>
+
+            <section className="pi-commit-grid">
+              <div className="pi-panel pi-counter-panel">
+                <div className="pi-kicker">
+                  <span>Counter-thesis</span> Make both cases audible
+                </div>
+                <h2>The opposing view is part of the evidence.</h2>
+                <div className="pi-case-grid">
+                  <article>
+                    <b>
+                      <ArrowUpRight size={15} /> Bull case
+                    </b>
+                    <p>
+                      <Check size={13} /> Test a YES thesis against actual asks, depth, and the trading window.
+                    </p>
+                  </article>
+                  <article>
+                    <b>
+                      <ArrowDownRight size={15} /> Bear case
+                    </b>
+                    <p>Markets can lock or thin out between a snapshot and any future write.</p>
+                  </article>
+                </div>
+              </div>
+
+              <div className="pi-panel pi-forecast-panel" data-testid="forecast-workflow">
+                <div className="pi-kicker">
+                  <span>Local commitment</span> {stage === "DRAFT" ? "Draft only" : stage === "REVIEW" ? "Review before save" : "Receipt committed"}
+                </div>
+                <h2>
+                  {stage === "DRAFT"
+                    ? "Make your forecast specific."
+                    : stage === "REVIEW"
+                    ? "Review the record before committing."
+                    : "Decision Receipt committed."}
+                </h2>
+
+                {stage !== "COMMITTED" ? (
+                  <>
+                    <div className="pi-side-toggle">
+                      <button
+                        data-testid="forecast-up"
+                        onClick={() => {
+                          setSide("UP");
+                          setStage("DRAFT");
+                        }}
+                        className={side === "UP" ? "active" : ""}
+                      >
+                        UP
+                      </button>
+                      <button
+                        data-testid="forecast-down"
+                        onClick={() => {
+                          setSide("DOWN");
+                          setStage("DRAFT");
+                        }}
+                        className={side === "DOWN" ? "active down" : ""}
+                      >
+                        DOWN
+                      </button>
+                    </div>
+
+                    <div className="pi-forecast-value">
+                      <b>{forecast}%</b>
+                      <span>
+                        {side} at expiry
+                        <br />
+                        {gap == null ? "market unavailable" : `${gap >= 0 ? "+" : ""}${gap.toFixed(1)} points vs market`}
+                      </span>
+                    </div>
+
+                    <input
+                      data-testid="forecast-slider"
+                      aria-label="Forecast probability"
+                      type="range"
+                      min="1"
+                      max="99"
+                      value={forecast}
+                      onChange={event => {
+                        setForecast(Number(event.target.value));
+                        setForecastRevision(revision => revision + 1);
+                        setStage("DRAFT");
+                        setCommitError(null);
+                      }}
+                    />
+
+                    <label className="sr-only" htmlFor="thesis">
+                      Forecast thesis
+                    </label>
+                    <textarea
+                      id="thesis"
+                      data-testid="forecast-thesis"
+                      value={thesis}
+                      onChange={event => {
+                        setThesis(event.target.value);
+                        setStage("DRAFT");
+                      }}
+                      placeholder="Why might this direction be right?"
+                      rows={3}
+                    />
+
+                    <label className="sr-only" htmlFor="counter-thesis">
+                      Counter thesis
+                    </label>
+                    <textarea
+                      id="counter-thesis"
+                      data-testid="forecast-counter-thesis"
+                      value={counterThesis}
+                      onChange={event => {
+                        setCounterThesis(event.target.value);
+                        setStage("DRAFT");
+                      }}
+                      placeholder="What could make this forecast wrong?"
+                      rows={3}
+                    />
+
+                    <div className="pi-confidence" aria-label="Forecast confidence">
+                      {(["LOW", "MEDIUM", "HIGH"] as Confidence[]).map(level => (
+                        <button
+                          key={level}
+                          type="button"
+                          data-testid={`confidence-${level.toLowerCase()}`}
+                          onClick={() => {
+                            setConfidence(level);
+                            setStage("DRAFT");
+                          }}
+                          className={confidence === level ? "active" : ""}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+
+                    {stage === "DRAFT" ? (
+                      <button
+                        data-testid="review-forecast"
+                        className="pi-action full"
+                        disabled={!canReview}
+                        onClick={() => setStage("REVIEW")}
+                      >
+                        <FileCheck2 size={15} /> Review forecast
+                      </button>
+                    ) : (
+                      <div className="pi-review-card">
+                        <span>
+                          Reviewing {side} at {forecast}% / {confidence} confidence
+                        </span>
+                        <b>{thesis}</b>
+                        <small>Against: {counterThesis}</small>
+                        <div className="text-xs text-white/70 py-1">
+                          Calculated Executable Edge: <b>{executableEdge > 0 ? `+${executableEdge.toFixed(1)}%` : `${executableEdge.toFixed(1)}%`}</b>
+                        </div>
+                        <button
+                          data-testid="commit-receipt"
+                          className="pi-action full"
+                          disabled={commitReceipt.isPending}
+                          onClick={handleCommit}
+                        >
+                          {commitReceipt.isPending ? "Saving receipt…" : "Commit Decision Receipt"}
+                        </button>
+                        <button type="button" className="pi-text-link" onClick={() => setStage("DRAFT")}>
+                          Edit draft
+                        </button>
+                      </div>
+                    )}
+
+                    {commitError && (
+                      <p className="pi-error-note" role="alert">
+                        {commitError}{" "}
+                        {!auth.isAuthenticated && (
+                          <button type="button" onClick={() => startLogin()} className="pi-inline-link">
+                            Sign in
+                          </button>
+                        )}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="pi-committed-card" data-testid="receipt-committed">
+                    <FileCheck2 size={22} />
+                    <b>Your evidence is now recorded.</b>
+                    <span>Receipt saved with server-captured market snapshot and EventForge model metrics.</span>
+                    <Link href="/proof" className="pi-action full">
+                      Inspect Proof Profile <ArrowUpRight size={15} />
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+      </div>
+    </SignalShell>
+  );
 }

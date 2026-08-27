@@ -116,3 +116,17 @@ client/public/__manus__/version.json
 # Playwright browser-test artifacts
 test-results/
 playwright-report/
+
+# Manus and temporary logs
+.manus-logs/
+package-lock.json
+
+# Keys and credentials
+*.pem
+*.key
+*.cert
+*.crt
+
+# Agent and IDE caches
+.gemini/
+.antigravity/
