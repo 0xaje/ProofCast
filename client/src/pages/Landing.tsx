@@ -23,9 +23,6 @@ export default function Landing() {
         <div className="pl-nav-links">
           <a href="#method">How It Works</a>
           <Link href="/signal">Signal Room</Link>
-          <Link href="/market">Decision Engine</Link>
-          <Link href="/leaderboard">Leaderboard</Link>
-          <Link href="/proof">Proof Ledger</Link>
         </div>
         <div className="flex items-center gap-3">
           <CustomConnectButton compact />
