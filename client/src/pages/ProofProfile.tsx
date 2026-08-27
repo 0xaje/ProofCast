@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowUpRight, CheckCircle2, Clock3, FileCheck2, LockKeyhole, Scale, ShieldCheck, Link as LinkIcon, RefreshCw, Cpu, Activity } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Clock3, FileCheck2, LockKeyhole, Scale, ShieldCheck, Link as LinkIcon, RefreshCw, Cpu, Activity, Share2, Copy } from "lucide-react";
 import { Link } from "wouter";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -138,6 +138,34 @@ export default function ProofProfile() {
     } catch (err: any) {
       setAnchorMessage(`On-Chain Anchoring: ${err?.message || "Transaction cancelled or failed"}`);
     }
+  }
+
+  const [copiedProof, setCopiedProof] = React.useState(false);
+
+  function handleShareProof() {
+    if (!selectedReceipt) return;
+    const verifiedOutcome = selectedReceipt.resolutions.find(r => r.verificationStatus === "VERIFIED");
+    const anchorLink = selectedReceipt.anchorTxHash
+      ? `https://shannon-explorer.somnia.network/tx/${selectedReceipt.anchorTxHash}`
+      : "Pending on-chain anchor";
+
+    const proofCard = `🔮 ProofCast Verifiable Decision Receipt #${selectedReceipt.id}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Question: ${selectedReceipt.marketSnapshot.question}
+• Market Asset: ${selectedReceipt.marketSnapshot.asset} (Somnia DreamDEX)
+• Forecast: ${selectedReceipt.forecast.direction} @ ${percentFromBps(selectedReceipt.forecast.probabilityBps)} (${selectedReceipt.forecast.confidence} Conf)
+• Thesis: "${selectedReceipt.forecast.thesis}"
+• Committed At: ${new Date(selectedReceipt.createdAt).toISOString()}
+• Outcome Status: ${verifiedOutcome ? `VERIFIED (${verifiedOutcome.outcome})` : "ACTIVE / PENDING"}
+• Somnia On-Chain Anchor: ${anchorLink}
+• Cryptographic Seal: SHA-256
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Verifiable intelligence powered by Somnia Blockchain & DreamDEX`;
+
+    navigator.clipboard.writeText(proofCard);
+    setCopiedProof(true);
+    setAnchorMessage("Verifiable Proof Card copied to clipboard!");
+    setTimeout(() => setCopiedProof(false), 3000);
   }
 
   function openRevision() {
@@ -535,6 +563,16 @@ export default function ProofProfile() {
                 <h2>{selected.isLoading ? "Loading evidence…" : selectedReceipt ? selectedReceipt.forecast.thesis : "Receipt detail unavailable"}</h2>
               </div>
               <div className="flex items-center gap-2">
+                {selectedReceipt && (
+                  <button
+                    type="button"
+                    onClick={handleShareProof}
+                    className="inline-flex items-center gap-1 text-xs bg-white/5 border border-white/15 text-white/80 hover:text-white px-2.5 py-1 rounded-lg hover:bg-white/10 transition"
+                    title="Copy verifiable proof card to clipboard"
+                  >
+                    <Share2 size={12} /> {copiedProof ? "Copied!" : "Share Proof"}
+                  </button>
+                )}
                 {selectedReceipt?.anchorTxHash ? (
                   <a
                     href={`https://shannon-explorer.somnia.network/tx/${selectedReceipt.anchorTxHash}`}

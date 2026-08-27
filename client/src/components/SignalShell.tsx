@@ -1,6 +1,6 @@
 /* Proofcast / Signal Room: shared persistent rail and utility bar; evidence-led navigation across every route. */
 import { Link, useLocation } from "wouter";
-import { Bell, Compass, FileCheck2, GitCompareArrows, Menu, Radio, RefreshCw, Search, Settings2, WalletCards, X } from "lucide-react";
+import { Bell, Compass, FileCheck2, GitCompareArrows, Menu, Radio, RefreshCw, Search, Settings2, Trophy, WalletCards, X } from "lucide-react";
 import { ReactNode, useState } from "react";
 import { trpc } from "@/lib/trpc";
 
@@ -8,6 +8,7 @@ const navItems = [
   { href: "/signal", label: "Signal room", icon: Compass },
   { href: "/market", label: "Market decision", icon: GitCompareArrows },
   { href: "/proof", label: "Proof profile", icon: FileCheck2 },
+  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
 ];
 
 export function StatusChip({ children, tone = "snapshot" }: { children: ReactNode; tone?: "live" | "snapshot" | "unavailable" | "watch" }) {

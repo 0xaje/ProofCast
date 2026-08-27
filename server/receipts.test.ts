@@ -266,4 +266,11 @@ describe("Decision Receipt v1 protected procedures", () => {
     await expect(caller.receipts.verifyResolutionEvidence({ resolutionId: 1, status: "VERIFIED" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(caller.receipts.pendingReview()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("allows unauthenticated public access to global forecaster leaderboard", async () => {
+    const caller = appRouter.createCaller(unauthenticatedContext());
+    const leaderboard = await caller.receipts.leaderboard();
+    expect(Array.isArray(leaderboard)).toBe(true);
+  });
 });
+

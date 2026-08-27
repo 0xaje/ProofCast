@@ -9,6 +9,7 @@ import {
   createForecastRevision,
   getCalibrationMetrics,
   getDecisionReceipt,
+  getGlobalLeaderboard,
   listPendingResolutionEvidence,
   listDecisionReceipts,
   buildCalibrationCsv,
@@ -241,6 +242,13 @@ export const appRouter = router({
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to read Decision Receipt" });
         }
       }),
+    leaderboard: publicProcedure.query(async () => {
+      try {
+        return await getGlobalLeaderboard();
+      } catch (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to load leaderboard" });
+      }
+    }),
   }),
 });
 

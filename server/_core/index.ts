@@ -28,6 +28,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+import { pollAndResolveDreamDexReceipts } from "../resolutionWorker";
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
@@ -60,7 +62,20 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    
+    // Start automated background DreamDEX resolution daemon (every 60s)
+    setInterval(async () => {
+      try {
+        const result = await pollAndResolveDreamDexReceipts();
+        if (result.resolvedCount > 0) {
+          console.log(`[DreamDEX Resolver] Auto-resolved ${result.resolvedCount} expired market receipt(s).`);
+        }
+      } catch (err) {
+        console.warn("[DreamDEX Resolver] Background poll error:", err instanceof Error ? err.message : err);
+      }
+    }, 60_000);
   });
 }
 
 startServer().catch(console.error);
+

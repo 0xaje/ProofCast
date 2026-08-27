@@ -11,6 +11,7 @@ import {
   forecastRevisions,
   marketSnapshots,
   receiptResolutions,
+  users,
   type DecisionReceipt,
   type InsertForecast,
   type InsertMarketSnapshot,
@@ -402,3 +403,75 @@ export async function getDecisionReceipt(userId: number, receiptId: number) {
   const timeline = await getReceiptTimeline(userId, receiptId);
   return { ...shapeReceipt(rows[0]), ...timeline };
 }
+
+export interface LeaderboardEntry {
+  rank: number;
+  userId: number;
+  displayName: string;
+  totalReceipts: number;
+  verifiedCount: number;
+  anchoredCount: number;
+  meanBrierScoreBps: number | null;
+  brierScoreFormatted: string;
+  directionalAccuracyPct: number | null;
+  status: "PROVEN" | "CALIBRATING" | "EMERGING";
+}
+
+export async function getGlobalLeaderboard(database?: ReceiptDatabase): Promise<LeaderboardEntry[]> {
+  const db = database ?? await getDb();
+  if (!db) return [];
+
+  const allUsers = await db.select({ id: users.id, name: users.name, email: users.email }).from(users);
+  const entries: LeaderboardEntry[] = [];
+
+  for (const user of allUsers) {
+    const userReceipts = await db.select().from(decisionReceipts).where(eq(decisionReceipts.userId, user.id));
+    if (userReceipts.length === 0) continue;
+
+    const metrics = await getCalibrationMetrics(user.id, db);
+    const anchoredCount = userReceipts.filter(r => !!r.anchorTxHash).length;
+    const verifiedCount = metrics.verifiedCount;
+    const meanBrierScoreBps = metrics.meanBrierScoreBps;
+
+    const displayName =
+      user.name?.trim() ||
+      (user.email ? user.email.split("@")[0]! : `Forecaster #${user.id}`);
+
+    const status: "PROVEN" | "CALIBRATING" | "EMERGING" =
+      verifiedCount >= 5 ? "PROVEN" : verifiedCount >= 1 ? "CALIBRATING" : "EMERGING";
+
+    const brierScoreFormatted =
+      meanBrierScoreBps !== null ? (meanBrierScoreBps / 10_000).toFixed(4) : "—";
+
+    entries.push({
+      rank: 0,
+      userId: user.id,
+      displayName,
+      totalReceipts: userReceipts.length,
+      verifiedCount,
+      anchoredCount,
+      meanBrierScoreBps,
+      brierScoreFormatted,
+      directionalAccuracyPct: metrics.directionalAccuracyPct,
+      status,
+    });
+  }
+
+  // Sort by: PROVEN first, lowest Brier score (best), highest directional accuracy, highest anchored count
+  entries.sort((a, b) => {
+    if (a.status === "PROVEN" && b.status !== "PROVEN") return -1;
+    if (b.status === "PROVEN" && a.status !== "PROVEN") return 1;
+    if (a.meanBrierScoreBps !== null && b.meanBrierScoreBps !== null) {
+      return a.meanBrierScoreBps - b.meanBrierScoreBps;
+    }
+    if (a.meanBrierScoreBps !== null) return -1;
+    if (b.meanBrierScoreBps !== null) return 1;
+    return b.totalReceipts - a.totalReceipts;
+  });
+
+  return entries.map((entry, index) => ({
+    ...entry,
+    rank: index + 1,
+  }));
+}
+
