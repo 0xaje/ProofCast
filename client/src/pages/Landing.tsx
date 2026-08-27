@@ -1,6 +1,7 @@
 /* Proofcast / Proof Instrument: a judge-facing landing narrative that explains the product before opening the live workspace. */
 import { Link } from "wouter";
 import { ArrowDownRight, ArrowUpRight, Check, CircleDotDashed, Fingerprint, ScanLine, ShieldCheck, Trophy, GitCompareArrows } from "lucide-react";
+import { HeroInstrument } from "@/components/HeroInstrument";
 
 const proofSteps = [
   { number: "01", title: "Observe", detail: "Read the market without confusing its price for your own judgement.", icon: ScanLine },
@@ -64,20 +65,7 @@ export default function Landing() {
           </div>
 
           <div className="pl-hero-object">
-            <div className="pl-asset-frame">
-              <img
-                src="/proofcast-hero.jpg"
-                alt="Proofcast high-tech market intelligence instrument and cryptographic proof seal on Somnia"
-                className="w-full h-full object-cover"
-              />
-              <span className="pl-frame-label top">Signal → forecast → receipt</span>
-              <span className="pl-frame-label bottom">Evidence-bound / Somnia Shannon</span>
-            </div>
-            <div className="pl-asset-tag">
-              <span className="pl-live-dot" /> LIVE SOMNIA DREAMDEX
-              <br />
-              <strong>Verified Event Contracts</strong>
-            </div>
+            <HeroInstrument />
           </div>
         </section>
 
