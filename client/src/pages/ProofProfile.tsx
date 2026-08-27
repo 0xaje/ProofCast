@@ -6,6 +6,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { SignalShell, StatusChip } from "@/components/SignalShell";
 import { trpc } from "@/lib/trpc";
 
+import { anchorReceiptToSomniaChain } from "@/lib/web3/somnia";
+
 function receiptDate(value: Date | string) {
   return new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
@@ -110,18 +112,32 @@ export default function ProofProfile() {
     URL.revokeObjectURL(url);
   }
 
-  function handleAnchorToSomnia() {
+  async function handleAnchorToSomnia() {
     if (!selectedReceipt) return;
-    setAnchorMessage(null);
-    // Generate deterministic Somnia Testnet anchor transaction hash
-    const pseudoTxHash = "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, "0")).join("");
-    const pseudoAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
-    
-    anchorReceiptMutation.mutate({
-      receiptId: selectedReceipt.id,
-      anchorTxHash: pseudoTxHash,
-      anchorAddress: pseudoAddress,
-    });
+    setAnchorMessage("Prompting Somnia Shannon wallet connection and anchor transaction…");
+    try {
+      const receiptHash =
+        selectedReceipt.resolutions[0]?.evidenceHash ||
+        "0x" +
+          Array.from(new TextEncoder().encode(`PROOFCAST_RECEIPT_${selectedReceipt.id}_${selectedReceipt.createdAt}`))
+            .map(b => b.toString(16).padStart(2, "0"))
+            .slice(0, 32)
+            .join("")
+            .padEnd(64, "0");
+      const marketId = selectedReceipt.marketSnapshot.marketId;
+
+      const { txHash, callerAddress } = await anchorReceiptToSomniaChain(
+        receiptHash,
+        marketId,
+      );
+      anchorReceiptMutation.mutate({
+        receiptId: selectedReceipt.id,
+        anchorTxHash: txHash,
+        anchorAddress: callerAddress,
+      });
+    } catch (err: any) {
+      setAnchorMessage(`On-Chain Anchoring: ${err?.message || "Transaction cancelled or failed"}`);
+    }
   }
 
   function openRevision() {
