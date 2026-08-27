@@ -46,8 +46,13 @@ flowchart LR
    * Click **Review Forecast** $\rightarrow$ Click **Commit Decision Receipt**.
 5. **Step 5: Anchor to Somnia Shannon Blockchain (`/proof`)**
    * Navigate to **Proof Profile** (`/proof`).
-   * Click **Anchor to Somnia** on the committed receipt.
+   * Click **Anchor to Somnia** on the committed receipt (connects browser wallet and broadcasts transaction).
    * Click the **Somnia Shannon Anchor Badge** to view the confirmed transaction directly on the [Somnia Shannon Block Explorer](https://shannon-explorer.somnia.network).
+   * Click **Share Proof** to copy a formatted cryptographic verification badge.
+
+6. **Step 6: Explore Global Forecaster Leaderboard (`/leaderboard`)**
+   * Open the **Leaderboard** (`/leaderboard`).
+   * View the ecosystem-wide forecaster rankings sorted by Brier score, directional accuracy, and on-chain anchored receipts.
 
 ---
 
@@ -56,7 +61,7 @@ flowchart LR
 1. **Step 1: Select Resolved Receipt (`/proof`)**
    * In **Proof Profile**, select an existing receipt.
 2. **Step 2: Trigger Automated On-Chain Settlement**
-   * Click **Run Auto-Resolution**.
+   * Click **Run Auto-Resolution** (or let the background 60s daemon resolve it automatically).
    * Show that the backend `resolutionWorker` detects the on-chain settlement status from Somnia DreamDEX, automatically records the `VERIFIED` resolution, and computes the cryptographic SHA-256 evidence hash.
 3. **Step 3: Inspect Brier Score & Calibration**
    * Review the updated mathematical **Brier Score** ($\text{BS} = (f - o)^2$) and **Directional Accuracy**.
@@ -80,7 +85,8 @@ flowchart LR
 
 ## 4. Verification & Health Summary
 
-* **Unit & Integration Suite**: **28 / 28 Tests Passed** (`npx vitest run`)
+* **Unit & Integration Suite**: **29 / 29 Tests Passed** (`npx vitest run`)
 * **TypeScript Compilation**: **0 Errors** (`npx tsc --noEmit`)
 * **Production Build**: **Successful** (`npm run build`)
 * **Reality Audit Artifact**: [LIVE_SYSTEM_VERIFICATION.md](file:///home/oyeolorun/ProofCast/LIVE_SYSTEM_VERIFICATION.md)
+
