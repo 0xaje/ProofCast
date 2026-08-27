@@ -384,7 +384,7 @@ export async function getCalibrationMetrics(userId: number, database?: ReceiptDa
       originalForecast = originalRows[0] ?? originalForecast;
     }
     const forecastAtResolution = verified ? selectForecastAtResolution(originalForecast, timeline.revisions, verified.verifiedAt ?? verified.createdAt ?? new Date()) : null;
-    const score = verified && forecastAtResolution ? scoreVerifiedOutcome(row.receipt.id, forecastAtResolution, verified) : null;
+    const score = verified && forecastAtResolution ? scoreVerifiedOutcome(row.receipt.id, { ...forecastAtResolution, committedAt: row.receipt.createdAt ?? originalForecast.committedAt }, verified) : null;
     if (score && verified) scored.push({ ...score, resolvedAt: verified.verifiedAt ?? verified.createdAt ?? new Date() });
     else excludedCount += 1;
   }
@@ -404,6 +404,8 @@ export async function getDecisionReceipt(userId: number, receiptId: number) {
   return { ...shapeReceipt(rows[0]), ...timeline };
 }
 
+export type LeaderboardBadge = "SHANNON_ANCHORED" | "TOP_CALIBRATION" | "PRECISION_MASTER" | "PROLIFIC";
+
 export interface LeaderboardEntry {
   rank: number;
   userId: number;
@@ -412,9 +414,12 @@ export interface LeaderboardEntry {
   verifiedCount: number;
   anchoredCount: number;
   meanBrierScoreBps: number | null;
+  meanTimeWeightedBrierBps?: number | null;
+  earlyPredictionBonusPct?: number | null;
   brierScoreFormatted: string;
   directionalAccuracyPct: number | null;
   status: "PROVEN" | "CALIBRATING" | "EMERGING";
+  badges: LeaderboardBadge[];
 }
 
 export async function getGlobalLeaderboard(database?: ReceiptDatabase): Promise<LeaderboardEntry[]> {
@@ -443,6 +448,12 @@ export async function getGlobalLeaderboard(database?: ReceiptDatabase): Promise<
     const brierScoreFormatted =
       meanBrierScoreBps !== null ? (meanBrierScoreBps / 10_000).toFixed(4) : "—";
 
+    const badges: LeaderboardBadge[] = [];
+    if (anchoredCount > 0) badges.push("SHANNON_ANCHORED");
+    if (meanBrierScoreBps !== null && meanBrierScoreBps <= 2000 && verifiedCount >= 3) badges.push("TOP_CALIBRATION");
+    if (metrics.directionalAccuracyPct !== null && metrics.directionalAccuracyPct >= 70 && verifiedCount >= 3) badges.push("PRECISION_MASTER");
+    if (userReceipts.length >= 5) badges.push("PROLIFIC");
+
     entries.push({
       rank: 0,
       userId: user.id,
@@ -451,9 +462,12 @@ export async function getGlobalLeaderboard(database?: ReceiptDatabase): Promise<
       verifiedCount,
       anchoredCount,
       meanBrierScoreBps,
+      meanTimeWeightedBrierBps: metrics.meanTimeWeightedBrierBps,
+      earlyPredictionBonusPct: metrics.earlyPredictionBonusPct,
       brierScoreFormatted,
       directionalAccuracyPct: metrics.directionalAccuracyPct,
       status,
+      badges,
     });
   }
 

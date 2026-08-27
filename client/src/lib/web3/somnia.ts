@@ -126,17 +126,41 @@ export async function anchorReceiptToSomniaChain(
   });
 
   const ethereum = (window as any).ethereum;
-  const txHash = (await ethereum.request({
-    method: "eth_sendTransaction",
-    params: [
-      {
-        from: address,
-        to: PROOFCAST_ANCHOR_CONTRACT,
-        data: calldata,
-      },
-    ],
-  })) as string;
+  try {
+    const txHash = (await ethereum.request({
+      method: "eth_sendTransaction",
+      params: [
+        {
+          from: address,
+          to: PROOFCAST_ANCHOR_CONTRACT,
+          data: calldata,
+        },
+      ],
+    })) as string;
 
-  return { txHash, callerAddress: address };
+    return { txHash, callerAddress: address };
+  } catch (err: any) {
+    throw new Error(translateWeb3Error(err));
+  }
+}
+
+export function translateWeb3Error(err: any): string {
+  if (!err) return "An unknown Web3 wallet error occurred.";
+  const msg = err?.message || String(err);
+  const code = err?.code || err?.data?.originalError?.code;
+
+  if (code === 4001 || msg.includes("User rejected") || msg.includes("rejected the request") || msg.includes("ACTION_REJECTED")) {
+    return "Transaction cancelled: signature request was declined in your wallet.";
+  }
+  if (code === -32002 || msg.includes("already pending")) {
+    return "Wallet request already pending. Please open your wallet extension to approve.";
+  }
+  if (msg.includes("insufficient funds") || code === -32000) {
+    return "Insufficient STT funds on Somnia Shannon Testnet to pay for gas fees.";
+  }
+  if (msg.includes("network") || msg.includes("timeout") || msg.includes("fetch failed")) {
+    return "Somnia Shannon RPC timeout. Please retry in a few seconds.";
+  }
+  return msg.length > 120 ? `${msg.slice(0, 120)}…` : msg;
 }
 

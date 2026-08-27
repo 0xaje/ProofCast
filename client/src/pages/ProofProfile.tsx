@@ -7,6 +7,8 @@ import { SignalShell, StatusChip } from "@/components/SignalShell";
 import { trpc } from "@/lib/trpc";
 
 import { anchorReceiptToSomniaChain } from "@/lib/web3/somnia";
+import { ProofCardModal } from "@/components/ProofCardModal";
+import { toast } from "sonner";
 
 function receiptDate(value: Date | string) {
   return new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
@@ -112,9 +114,12 @@ export default function ProofProfile() {
     URL.revokeObjectURL(url);
   }
 
+  const [proofCardModalOpen, setProofCardModalOpen] = React.useState(false);
+
   async function handleAnchorToSomnia() {
     if (!selectedReceipt) return;
     setAnchorMessage("Prompting Somnia Shannon wallet connection and anchor transaction…");
+    const toastId = toast.loading("Confirming on-chain anchor in wallet…");
     try {
       const receiptHash =
         selectedReceipt.resolutions[0]?.evidenceHash ||
@@ -135,8 +140,11 @@ export default function ProofProfile() {
         anchorTxHash: txHash,
         anchorAddress: callerAddress,
       });
+      toast.success("Transaction submitted to Somnia Shannon Testnet!", { id: toastId });
     } catch (err: any) {
-      setAnchorMessage(`On-Chain Anchoring: ${err?.message || "Transaction cancelled or failed"}`);
+      const errorMsg = err?.message || "Transaction cancelled or failed";
+      setAnchorMessage(`On-Chain Anchoring: ${errorMsg}`);
+      toast.error(errorMsg, { id: toastId });
     }
   }
 
@@ -144,28 +152,7 @@ export default function ProofProfile() {
 
   function handleShareProof() {
     if (!selectedReceipt) return;
-    const verifiedOutcome = selectedReceipt.resolutions.find(r => r.verificationStatus === "VERIFIED");
-    const anchorLink = selectedReceipt.anchorTxHash
-      ? `https://shannon-explorer.somnia.network/tx/${selectedReceipt.anchorTxHash}`
-      : "Pending on-chain anchor";
-
-    const proofCard = `🔮 ProofCast Verifiable Decision Receipt #${selectedReceipt.id}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Question: ${selectedReceipt.marketSnapshot.question}
-• Market Asset: ${selectedReceipt.marketSnapshot.asset} (Somnia DreamDEX)
-• Forecast: ${selectedReceipt.forecast.direction} @ ${percentFromBps(selectedReceipt.forecast.probabilityBps)} (${selectedReceipt.forecast.confidence} Conf)
-• Thesis: "${selectedReceipt.forecast.thesis}"
-• Committed At: ${new Date(selectedReceipt.createdAt).toISOString()}
-• Outcome Status: ${verifiedOutcome ? `VERIFIED (${verifiedOutcome.outcome})` : "ACTIVE / PENDING"}
-• Somnia On-Chain Anchor: ${anchorLink}
-• Cryptographic Seal: SHA-256
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Verifiable intelligence powered by Somnia Blockchain & DreamDEX`;
-
-    navigator.clipboard.writeText(proofCard);
-    setCopiedProof(true);
-    setAnchorMessage("Verifiable Proof Card copied to clipboard!");
-    setTimeout(() => setCopiedProof(false), 3000);
+    setProofCardModalOpen(true);
   }
 
   function openRevision() {
@@ -517,10 +504,28 @@ Verifiable intelligence powered by Somnia Blockchain & DreamDEX`;
                   </button>
                 </div>
               ) : receipts.length === 0 ? (
-                <div className="pi-ledger-empty">
-                  <FileCheck2 size={27} />
-                  <b>There is no record to overstate.</b>
-                  <p>Your first committed forecast will appear here after the Market Decision review flow completes.</p>
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center backdrop-blur-xl">
+                  <div className="relative mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#d7f36b]/30 bg-[#d7f36b]/10 shadow-[0_0_20px_rgba(215,243,107,0.15)]">
+                    <FileCheck2 size={28} className="text-[#d7f36b]" />
+                  </div>
+                  <h3 className="font-display text-lg font-semibold text-white">No decision receipts committed yet</h3>
+                  <p className="mt-1.5 max-w-md text-xs leading-5 text-[#8b96a8]">
+                    Commit your first forecast on a live Somnia DreamDEX binary contract to establish your immutable cryptographic track record and Brier score calibration.
+                  </p>
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                    <Link
+                      href="/signal"
+                      className="flex h-9 items-center gap-2 rounded-xl bg-[#d7f36b] px-4 font-mono text-xs font-bold text-[#10140d] shadow-[0_0_15px_rgba(215,243,107,0.2)] transition-all hover:bg-[#c8f06a] active:scale-95"
+                    >
+                      Explore Live Markets <ArrowUpRight size={14} />
+                    </Link>
+                    <Link
+                      href="/market"
+                      className="flex h-9 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 font-mono text-xs font-semibold text-white transition-all hover:border-white/30 hover:bg-white/10 active:scale-95"
+                    >
+                      Decision Engine
+                    </Link>
+                  </div>
                 </div>
               ) : (
                 <div className="pi-ledger-list" data-testid="receipt-ledger">
@@ -937,6 +942,12 @@ Verifiable intelligence powered by Somnia Blockchain & DreamDEX`;
           </div>
         </section>
       </div>
+
+      <ProofCardModal
+        isOpen={proofCardModalOpen}
+        onClose={() => setProofCardModalOpen(false)}
+        receipt={selectedReceipt ?? null}
+      />
     </SignalShell>
   );
 }
