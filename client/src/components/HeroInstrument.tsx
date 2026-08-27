@@ -1,22 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { ArrowUpRight, Cpu, FileCheck2, ShieldCheck, Sparkles, Activity, Lock } from "lucide-react";
+import React from "react";
+import { Cpu, ShieldCheck, Lock, Radio } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { PROOFCAST_ANCHOR_CONTRACT } from "@/lib/web3/somnia";
 
 export function HeroInstrument() {
-  const [pulse, setPulse] = useState(61.8);
-  const [spreadBps, setSpreadBps] = useState(140);
-  const [hashTime, setHashTime] = useState<string>("");
+  const snapshot = trpc.dreamdex.snapshot.useQuery(undefined, { refetchInterval: 15_000 });
+  const market = snapshot.data?.markets?.[0];
+  const state = snapshot.data?.state;
 
-  useEffect(() => {
-    setHashTime(new Date().toLocaleTimeString());
-    const interval = setInterval(() => {
-      setPulse(prev => {
-        const delta = (Math.random() - 0.5) * 0.8;
-        return Number((Math.min(Math.max(prev + delta, 59.5), 64.2)).toFixed(1));
-      });
-      setHashTime(new Date().toLocaleTimeString());
-    }, 2400);
-    return () => clearInterval(interval);
-  }, []);
+  const probability = market?.midPercent ?? market?.lastPricePercent ?? 62;
+  const spreadBps = market?.spreadBps ?? 140;
+  const question = market?.question ?? "Somnia DreamDEX Binary Event Contract";
 
   return (
     <div className="relative w-full h-[520px] bg-[#121410] border border-[#151515] shadow-[16px_16px_0_#151515] p-6 flex flex-col justify-between overflow-hidden text-[#f8f6ef] font-sans selection:bg-[#c8f06a] selection:text-[#151515]">
@@ -39,9 +33,9 @@ export function HeroInstrument() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="flex h-2 w-2 rounded-full bg-[#c8f06a] animate-pulse" />
+          <span className={`flex h-2 w-2 rounded-full ${state === "LIVE" ? "bg-[#c8f06a] animate-pulse" : "bg-[#e9b65b]"}`} />
           <span className="font-mono text-[10px] uppercase tracking-wider text-[#c8f06a] font-bold">
-            LIVE TELEMETRY
+            {state ? `SOMNIA ${state}` : "CONNECTING RPC"}
           </span>
         </div>
       </div>
@@ -54,16 +48,16 @@ export function HeroInstrument() {
             <span>01 · DreamDEX Market Signal</span>
             <span className="font-mono text-[#c8f06a]">{spreadBps} BPS SPREAD</span>
           </div>
-          <div className="mt-1 flex items-baseline justify-between">
-            <div className="font-display text-lg font-bold text-white tracking-tight">
-              BTC &gt; $95,000 Expiry Window
+          <div className="mt-1 flex items-baseline justify-between gap-2">
+            <div className="font-display text-base font-bold text-white tracking-tight line-clamp-1">
+              {question}
             </div>
-            <div className="font-mono text-2xl font-bold text-[#c8f06a]">{pulse}%</div>
+            <div className="font-mono text-2xl font-bold text-[#c8f06a] shrink-0">{probability}%</div>
           </div>
           <div className="mt-2.5 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-[#c8f06a] to-[#f04b2f] transition-all duration-700 ease-out rounded-full"
-              style={{ width: `${pulse}%` }}
+              style={{ width: `${probability}%` }}
             />
           </div>
         </div>
@@ -75,16 +69,16 @@ export function HeroInstrument() {
               <Cpu size={12} /> 02 · EventForge Dual-Layer Engine
             </span>
             <span className="rounded bg-[#f04b2f]/20 px-1.5 py-0.5 text-[9px] font-mono text-[#f04b2f]">
-              HIGH CONFIDENCE
+              LAYER A + LAYER B
             </span>
           </div>
           <div className="mt-1.5 flex items-center justify-between text-xs">
             <span className="text-white/80">Deterministic Fair Value:</span>
-            <span className="font-mono font-bold text-white">64.5% UP</span>
+            <span className="font-mono font-bold text-white">Verified Model Signal</span>
           </div>
           <div className="mt-1 flex items-center justify-between text-xs">
-            <span className="text-white/80">Executable Edge (Net Friction):</span>
-            <span className="font-mono font-bold text-[#c8f06a]">+3.2% Edge</span>
+            <span className="text-white/80">Executable Edge:</span>
+            <span className="font-mono font-bold text-[#c8f06a]">Net of Spread &amp; Friction</span>
           </div>
         </div>
 
@@ -94,10 +88,10 @@ export function HeroInstrument() {
             <span className="flex items-center gap-1.5">
               <ShieldCheck size={12} className="text-[#c8f06a]" /> 03 · On-Chain Anchor
             </span>
-            <span className="font-mono text-[9px] text-white/40">{hashTime}</span>
+            <span className="font-mono text-[9px] text-white/40">NON-CUSTODIAL</span>
           </div>
           <div className="mt-1.5 font-mono text-[11px] text-white/90 truncate">
-            SHA-256: <span className="text-[#c8f06a]">0x742d35Cc6634C0532925a3b844Bc454e4438f44e</span>
+            CONTRACT: <span className="text-[#c8f06a]">{PROOFCAST_ANCHOR_CONTRACT}</span>
           </div>
           <div className="mt-1 flex items-center justify-between text-[10px] text-white/60">
             <span>ProofCastAnchor.sol</span>
