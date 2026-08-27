@@ -1,12 +1,11 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { WalletCards, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Wallet, AlertTriangle } from "lucide-react";
 
 interface CustomConnectButtonProps {
   className?: string;
-  compact?: boolean;
 }
 
-export function CustomConnectButton({ className = "", compact = false }: CustomConnectButtonProps) {
+export function CustomConnectButton({ className = "" }: CustomConnectButtonProps) {
   return (
     <div className={`relative flex items-center shrink-0 ${className}`}>
       <ConnectButton.Custom>
@@ -38,81 +37,47 @@ export function CustomConnectButton({ className = "", compact = false }: CustomC
               })}
             >
               {(() => {
-                // 1. Not connected state
+                // 1. Disconnected State
                 if (!connected) {
                   return (
                     <button
                       onClick={openConnectModal}
                       type="button"
-                      className="flex h-9 items-center gap-2 rounded-xl border border-[#d7f36b]/40 bg-[#d7f36b]/10 px-3.5 text-[11px] font-bold text-[#d7f36b] shadow-[0_0_15px_rgba(215,243,107,0.12)] transition-all hover:bg-[#d7f36b]/20 hover:border-[#d7f36b] active:scale-95 cursor-pointer font-mono"
+                      className="group flex h-9 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3.5 text-[11px] font-medium tracking-wide text-[#e8e6de] shadow-sm backdrop-blur-md transition-all duration-200 hover:border-[#d7f36b]/60 hover:bg-[#d7f36b]/10 hover:text-[#d7f36b] active:scale-[0.98] cursor-pointer"
                     >
-                      <WalletCards size={14} />
-                      <span>{compact ? "CONNECT" : "CONNECT WALLET"}</span>
+                      <Wallet size={13} className="text-[#8b96a8] transition-colors group-hover:text-[#d7f36b]" />
+                      <span>Connect Wallet</span>
                     </button>
                   );
                 }
 
-                // 2. Unsupported / Wrong Network state
+                // 2. Unsupported / Wrong Network State
                 if (chain.unsupported) {
                   return (
                     <button
                       onClick={openChainModal}
                       type="button"
-                      className="flex h-9 items-center gap-1.5 rounded-xl border border-red-500/40 bg-red-600/20 px-3 text-[10px] font-bold text-red-300 font-mono transition-all cursor-pointer hover:bg-red-600/30"
+                      className="flex h-9 items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 text-[10px] font-mono font-semibold text-amber-300 transition-all hover:bg-amber-500/20 active:scale-[0.98] cursor-pointer"
                     >
-                      <AlertTriangle size={13} className="animate-pulse" />
-                      <span>Wrong Network</span>
+                      <AlertTriangle size={13} className="animate-pulse text-amber-400" />
+                      <span>Switch Network</span>
                     </button>
                   );
                 }
 
-                // 3. Connected state
+                // 3. Connected State (Single Minimalist Account Pill)
                 return (
-                  <div className="flex items-center gap-2">
-                    {/* Chain indicator */}
-                    <button
-                      onClick={openChainModal}
-                      type="button"
-                      className="hidden sm:flex h-9 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2.5 text-[10px] font-mono font-medium text-[#a2adbd] hover:border-white/20 hover:bg-white/10 transition-all cursor-pointer"
-                    >
-                      {chain.hasIcon && (
-                        <div
-                          style={{
-                            background: chain.iconBackground,
-                            width: 12,
-                            height: 12,
-                            borderRadius: 999,
-                            overflow: "hidden",
-                            marginRight: 2,
-                          }}
-                        >
-                          {chain.iconUrl && (
-                            <img
-                              alt={chain.name ?? "Chain icon"}
-                              src={chain.iconUrl}
-                              style={{ width: 12, height: 12 }}
-                            />
-                          )}
-                        </div>
-                      )}
-                      <span>{chain.name}</span>
-                    </button>
-
-                    {/* Account button */}
-                    <button
-                      onClick={openAccountModal}
-                      type="button"
-                      className="flex h-9 items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 font-mono text-[11px] text-emerald-300 transition-all cursor-pointer hover:bg-emerald-500/20 hover:border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.1)]"
-                    >
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>{account.displayName}</span>
-                      {account.displayBalance && !compact && (
-                        <span className="text-[10px] text-emerald-400/80 pl-1 border-l border-emerald-500/30">
-                          {account.displayBalance}
-                        </span>
-                      )}
-                    </button>
-                  </div>
+                  <button
+                    onClick={openAccountModal}
+                    type="button"
+                    className="flex h-9 items-center gap-2 rounded-xl border border-white/12 bg-white/[0.05] px-3 font-mono text-[11px] font-medium text-[#f5f6f2] shadow-sm backdrop-blur-md transition-all duration-200 hover:border-[#d7f36b]/50 hover:bg-white/[0.08] hover:text-white active:scale-[0.98] cursor-pointer"
+                  >
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                    </span>
+                    <span>{account.displayName}</span>
+                  </button>
                 );
               })()}
             </div>

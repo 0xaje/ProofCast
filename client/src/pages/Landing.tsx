@@ -22,10 +22,9 @@ export default function Landing() {
         </Link>
         <div className="pl-nav-links">
           <a href="#method">How It Works</a>
-          <Link href="/signal">Launch App</Link>
         </div>
         <div className="flex items-center gap-3">
-          <CustomConnectButton compact />
+          <CustomConnectButton />
           <Link href="/signal" className="pl-nav-cta">
             Launch App <ArrowUpRight size={15} />
           </Link>
