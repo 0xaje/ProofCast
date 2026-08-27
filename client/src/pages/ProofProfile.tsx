@@ -3,6 +3,7 @@ import { ArrowUpRight, CheckCircle2, Clock3, FileCheck2, LockKeyhole, Scale, Shi
 import { Link } from "wouter";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useWallet } from "@/contexts/WalletContext";
 import { SignalShell, StatusChip } from "@/components/SignalShell";
 import { trpc } from "@/lib/trpc";
 
@@ -47,8 +48,10 @@ const emptyRevision: RevisionDraft = {
 
 export default function ProofProfile() {
   const auth = useAuth();
-  const ledger = trpc.receipts.listMine.useQuery({ limit: 25 }, { enabled: auth.isAuthenticated, retry: false });
-  const metrics = trpc.receipts.metrics.useQuery(undefined, { enabled: auth.isAuthenticated, retry: false });
+  const wallet = useWallet();
+  const isAuthed = auth.isAuthenticated || Boolean(wallet.address);
+  const ledger = trpc.receipts.listMine.useQuery({ limit: 25 }, { enabled: isAuthed, retry: false });
+  const metrics = trpc.receipts.metrics.useQuery(undefined, { enabled: isAuthed, retry: false });
   const exportCsv = trpc.receipts.exportCsv.useQuery(undefined, { enabled: false, retry: false });
   const isAdmin = auth.user?.role === "admin";
   const reviewQueue = trpc.receipts.pendingReview.useQuery({ limit: 25 }, { enabled: isAdmin, retry: false });
@@ -59,7 +62,7 @@ export default function ProofProfile() {
   const [resolution, setResolution] = React.useState<ResolutionDraft>({ outcome: "YES", sourceUrl: "", evidenceSummary: "" });
   const [anchorMessage, setAnchorMessage] = React.useState<string | null>(null);
 
-  const selected = trpc.receipts.getMineById.useQuery({ id: selectedId ?? 0 }, { enabled: Boolean(selectedId && auth.isAuthenticated), retry: false });
+  const selected = trpc.receipts.getMineById.useQuery({ id: selectedId ?? 0 }, { enabled: Boolean(selectedId && isAuthed), retry: false });
   const utils = trpc.useUtils();
 
   const revise = trpc.receipts.revise.useMutation({

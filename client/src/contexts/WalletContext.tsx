@@ -47,6 +47,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     ? Number(formatUnits(balanceData.value, balanceData.decimals)).toFixed(3)
     : null;
 
+  React.useEffect(() => {
+    if (address) {
+      localStorage.setItem("proofcast-wallet-address", address);
+    } else {
+      localStorage.removeItem("proofcast-wallet-address");
+    }
+  }, [address]);
+
   async function connect() {
     if (openConnectModal) {
       openConnectModal();

@@ -4,6 +4,7 @@ import { ArrowDownRight, ArrowUpRight, BookOpen, Check, FileCheck2, LockKeyhole,
 import { useState } from "react";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useWallet } from "@/contexts/WalletContext";
 import { AnimatedComparisonBar } from "@/components/AnimatedComparisonBar";
 import { SignalShell, StatusChip } from "@/components/SignalShell";
 import { trpc } from "@/lib/trpc";
@@ -29,6 +30,7 @@ export default function MarketDecision() {
   const search = useSearch();
   const requestedId = new URLSearchParams(search).get("market");
   const auth = useAuth();
+  const wallet = useWallet();
   const snapshot = trpc.dreamdex.snapshot.useQuery(undefined, { refetchInterval: 15_000, retry: 1 });
   const utils = trpc.useUtils();
 
@@ -79,8 +81,9 @@ export default function MarketDecision() {
 
   const handleCommit = () => {
     if (!market) return;
-    if (!auth.isAuthenticated) {
-      setCommitError("Sign in is required to create a private Decision Receipt.");
+    if (!auth.isAuthenticated && !wallet.address) {
+      setCommitError("Connect your Web3 wallet to create a verifiable Decision Receipt.");
+      wallet.connect();
       return;
     }
     setCommitError(null);

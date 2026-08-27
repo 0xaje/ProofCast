@@ -36,6 +36,27 @@ export async function createContext(
     user = null;
   }
 
+  // Support Web3 connected wallet authentication
+  if (!user) {
+    const walletHeader = opts.req.headers["x-wallet-address"];
+    if (typeof walletHeader === "string" && /^0x[a-fA-F0-9]{40}$/.test(walletHeader.trim())) {
+      const walletAddr = walletHeader.trim().toLowerCase();
+      try {
+        const dbUser = await import("../db").then(({ getUserByOpenId, upsertUser }) =>
+          getUserByOpenId(walletAddr).then(async existing => {
+            if (existing) return existing;
+            const shortName = `${walletAddr.slice(0, 6)}…${walletAddr.slice(-4)}`;
+            await upsertUser({ openId: walletAddr, name: shortName, loginMethod: "web3-wallet", role: "user" });
+            return getUserByOpenId(walletAddr);
+          }),
+        );
+        user = dbUser ?? null;
+      } catch (err) {
+        console.warn("[Context] Failed to authenticate via wallet header:", err);
+      }
+    }
+  }
+
   return {
     req: opts.req,
     res: opts.res,

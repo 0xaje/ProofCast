@@ -47,6 +47,7 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       headers() {
+        const headers: Record<string, string> = {};
         try {
           const raw = sessionStorage.getItem("manus-cookie");
           if (raw) {
@@ -54,13 +55,21 @@ const trpcClient = trpc.createClient({
             const pair = raw.split(";").find((s) => s.trim().startsWith(prefix));
             const token = pair?.trim().slice(prefix.length);
             if (token) {
-              return { Authorization: `Bearer ${token}` };
+              headers.Authorization = `Bearer ${token}`;
             }
           }
         } catch {
           // sessionStorage unavailable
         }
-        return {};
+        try {
+          const walletAddr = localStorage.getItem("proofcast-wallet-address");
+          if (walletAddr) {
+            headers["x-wallet-address"] = walletAddr;
+          }
+        } catch {
+          // localStorage unavailable
+        }
+        return headers;
       },
       fetch(input, init) {
         return globalThis.fetch(input, {
