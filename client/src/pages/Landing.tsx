@@ -22,12 +22,12 @@ export default function Landing() {
         </Link>
         <div className="pl-nav-links">
           <a href="#method">How It Works</a>
-          <Link href="/signal">Signal Room</Link>
+          <Link href="/signal">Launch App</Link>
         </div>
         <div className="flex items-center gap-3">
           <CustomConnectButton compact />
           <Link href="/signal" className="pl-nav-cta">
-            Enter Signal Room <ArrowUpRight size={15} />
+            Launch App <ArrowUpRight size={15} />
           </Link>
         </div>
       </nav>
@@ -49,7 +49,7 @@ export default function Landing() {
             </p>
             <div className="pl-actions">
               <Link href="/signal" className="pl-primary">
-                Open Signal Room <ArrowUpRight size={18} />
+                Launch App <ArrowUpRight size={18} />
               </Link>
               <a href="#method" className="pl-secondary">
                 See the proof loop <ArrowDownRight size={17} />
@@ -214,7 +214,7 @@ export default function Landing() {
           <h2>Ready to see what a prediction should leave behind?</h2>
           <div className="flex justify-center gap-4">
             <Link href="/signal" className="pl-primary">
-              Enter the Signal Room <ArrowUpRight size={18} />
+              Launch App <ArrowUpRight size={18} />
             </Link>
             <Link href="/leaderboard" className="pl-primary bg-[#151515] text-[#f8f6ef]">
               View Leaderboard <Trophy size={16} className="inline ml-1" />
