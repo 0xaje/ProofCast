@@ -8,7 +8,7 @@ interface ProofCardModalProps {
   onClose: () => void;
   receipt: {
     id: number;
-    marketId: string;
+    marketId?: string;
     forecast?: {
       direction: "UP" | "DOWN";
       probabilityBps: number;
@@ -16,7 +16,9 @@ interface ProofCardModalProps {
       thesis?: string;
     };
     marketSnapshot?: {
-      question: string;
+      marketId?: string;
+      question?: string;
+      asset?: string;
       network?: string;
     };
     anchorTxHash?: string | null;
