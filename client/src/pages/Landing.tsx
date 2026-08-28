@@ -1,16 +1,25 @@
-/* Proofcast / Proof Instrument: a judge-facing landing narrative that explains the product before opening the live workspace. */
+import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowDownRight, ArrowUpRight, Check, CircleDotDashed, Fingerprint, ScanLine, ShieldCheck, Trophy, GitCompareArrows } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Check, CircleDotDashed, Coins, Fingerprint, GitCompareArrows, ScanLine, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import { HeroInstrument } from "@/components/HeroInstrument";
 import { CustomConnectButton } from "@/components/CustomConnectButton";
+import { JudgeGuidedTour } from "@/components/JudgeGuidedTour";
+import { SomniaFaucetModal } from "@/components/SomniaFaucetModal";
 
 const proofSteps = [
-  { number: "01", title: "Observe", detail: "Read the market without confusing its price for your own judgement.", icon: ScanLine },
-  { number: "02", title: "Commit", detail: "Record a clear forecast, confidence level, and rationale before the outcome is known.", icon: CircleDotDashed },
-  { number: "03", title: "Prove", detail: "Keep the market snapshot, decision, and resolution evidence inspectable together.", icon: Fingerprint },
+  { number: "01", title: "Observe", detail: "Read live DreamDEX market signals, order book depth, and real-time spreads.", icon: ScanLine },
+  { number: "02", title: "Understand", detail: "Examine EventForge deterministic model intelligence and structured thesis arguments.", icon: GitCompareArrows },
+  { number: "03", title: "Challenge", detail: "Confront your forecast with counter-theses and explicit invalidating conditions.", icon: CircleDotDashed },
+  { number: "04", title: "Commit", detail: "Freeze an immutable SHA-256 Decision Receipt capturing the exact evidence state.", icon: Fingerprint },
+  { number: "05", title: "Anchor", detail: "Anchor the decision hash permanently on Somnia Shannon Testnet via ProofCastAnchor.sol.", icon: ShieldCheck },
+  { number: "06", title: "Resolve", detail: "Automated, idempotent settlement ingestion as DreamDEX event contracts resolve.", icon: Check },
+  { number: "07", title: "Prove", detail: "Calculate verified Brier calibration scores ($BS = (f - o)^2$) and lifetime calibration tiers.", icon: Trophy },
 ];
 
 export default function Landing() {
+  const [tourOpen, setTourOpen] = useState(false);
+  const [faucetOpen, setFaucetOpen] = useState(false);
+
   return (
     <div className="proof-landing">
       <nav className="pl-nav">
@@ -22,6 +31,12 @@ export default function Landing() {
         </Link>
         <div className="pl-nav-links">
           <a href="#method">How It Works</a>
+          <button onClick={() => setTourOpen(true)} className="flex items-center gap-1 text-[#c8f06a] hover:underline">
+            <Sparkles size={13} /> 45s Tour
+          </button>
+          <button onClick={() => setFaucetOpen(true)} className="flex items-center gap-1 text-white/80 hover:text-white">
+            <Coins size={13} className="text-[#c8f06a]" /> Faucet
+          </button>
         </div>
         <div className="flex items-center gap-3">
           <CustomConnectButton />
@@ -35,31 +50,36 @@ export default function Landing() {
         <section className="pl-hero">
           <div className="pl-hero-copy">
             <div className="pl-eyebrow">
-              <span /> Prediction intelligence / evidence first
+              <span /> Decision intelligence before commitment · Accountability after resolution
             </div>
             <h1>
-              Predictions are cheap.
+              Observe the signal.
               <br />
-              <em>Proof is not.</em>
+              Challenge the thesis.
+              <br />
+              <em>Commit with proof.</em>
             </h1>
             <p className="pl-lead">
-              Proofcast turns live Somnia DreamDEX market signals into an accountable, on-chain record of what you
-              believed, why you believed it, and what happened after the market resolved.
+              ProofCast is the decision intelligence and accountability layer for Somnia DreamDEX Event Contracts. Challenge your thinking before you commit, anchor your reasoning on-chain, and prove your calibration when reality resolves.
             </p>
             <div className="pl-actions">
               <Link href="/signal" className="pl-primary">
                 Launch App <ArrowUpRight size={18} />
               </Link>
-              <a href="#method" className="pl-secondary">
-                See the proof loop <ArrowDownRight size={17} />
-              </a>
+              <button
+                type="button"
+                onClick={() => setTourOpen(true)}
+                className="pl-secondary flex items-center gap-2 cursor-pointer"
+              >
+                <Sparkles size={15} className="text-[#c8f06a]" /> Start 45s Judge Tour
+              </button>
             </div>
             <div className="pl-proofline">
               <span>01</span>
               <p>
-                Market signal is not a verdict.
+                Market signal is an input, not a verdict.
                 <br />
-                <strong>Your judgement deserves a receipt.</strong>
+                <strong>Your judgement deserves an immutable receipt.</strong>
               </p>
             </div>
           </div>
@@ -70,15 +90,19 @@ export default function Landing() {
         </section>
 
         <section className="pl-ticker" aria-label="Proofcast product principles">
-          <span>LIVE MARKET CONTEXT</span>
+          <span>OBSERVE SIGNAL</span>
           <i>✦</i>
-          <span>EVENTFORGE AI INTELLIGENCE</span>
+          <span>EVENTFORGE AI ANALYSIS</span>
           <i>✦</i>
-          <span>IMMUTABLE RECEIPT</span>
+          <span>CHALLENGE THESIS</span>
           <i>✦</i>
-          <span>SOMNIA ON-CHAIN ANCHOR</span>
+          <span>IMMUTABLE SHA-256 RECEIPT</span>
+          <i>✦</i>
+          <span>SOMNIA L1 ANCHOR</span>
           <i>✦</i>
           <span>BRIER CALIBRATION SCORE</span>
+          <i>✦</i>
+          <span>PROVEN LIFECYCLE REPLAY</span>
         </section>
 
         <section id="method" className="pl-statement">
@@ -90,31 +114,32 @@ export default function Landing() {
               Your judgement should be <span>an asset.</span>
             </h2>
             <p>
-              Prediction markets can tell you where a crowd is leaning. They do not preserve your thinking, your
-              confidence, or the evidence you acted on. Proofcast provides that missing cryptographic audit trail.
+              Prediction markets tell you what the crowd prices. ProofCast helps you decide what you believe, challenges your thinking before you commit, and preserves the decision long enough for reality to judge it.
             </p>
           </div>
         </section>
 
         <section className="pl-loop">
           <div className="pl-loop-heading">
-            <div className="pl-section-label">The proof loop / 002</div>
+            <div className="pl-section-label">The 7-Step Lifecycle / 002</div>
             <h2>
-              One decision.
+              Observe → Understand → Challenge
               <br />
-              A complete chain of custody.
+              Commit → Anchor → Resolve → Prove.
             </h2>
           </div>
-          <div className="pl-step-grid">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 mt-10">
             {proofSteps.map(({ number, title, detail, icon: Icon }) => (
-              <article key={number} className="pl-step">
-                <div className="pl-step-top">
-                  <span>{number}</span>
-                  <Icon size={21} />
+              <article key={number} className="rounded-xl border border-white/15 bg-black/40 p-6 flex flex-col justify-between min-h-[220px]">
+                <div>
+                  <div className="flex items-center justify-between text-[#c8f06a] font-mono text-xs font-bold">
+                    <span>{number}</span>
+                    <Icon size={18} />
+                  </div>
+                  <h3 className="mt-4 font-display text-xl font-bold text-white tracking-tight">{title}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-[#a09e96]">{detail}</p>
                 </div>
-                <h3>{title}</h3>
-                <p>{detail}</p>
-                <div className="pl-step-rule" />
+                <div className="mt-4 w-8 border-t-2 border-[#f04b2f]" />
               </article>
             ))}
           </div>
@@ -231,6 +256,12 @@ export default function Landing() {
         <span>Prediction intelligence & cryptographic audit trail on Somnia.</span>
         <span>© 2026 Proofcast</span>
       </footer>
+
+      {/* Interactive Guided Tour Modal */}
+      <JudgeGuidedTour isOpen={tourOpen} onClose={() => setTourOpen(false)} />
+
+      {/* Somnia Faucet & Network Modal */}
+      <SomniaFaucetModal isOpen={faucetOpen} onClose={() => setFaucetOpen(false)} />
     </div>
   );
 }

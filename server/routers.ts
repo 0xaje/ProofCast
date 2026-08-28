@@ -10,6 +10,7 @@ import {
   getCalibrationMetrics,
   getDecisionReceipt,
   getGlobalLeaderboard,
+  getCompletedHistoricalProofs,
   listPendingResolutionEvidence,
   listDecisionReceipts,
   buildCalibrationCsv,
@@ -20,7 +21,7 @@ import { computeDeterministicModel } from "./eventforge/model";
 import { generateEventForgeReasoning } from "./eventforge/reasoning";
 import { evaluateMarketQuality } from "./marketQuality";
 import { calculateExecutableEdge } from "./executableEdge";
-import { pollAndResolveDreamDexReceipts } from "./resolutionWorker";
+import { pollAndResolveDreamDexReceipts, getResolutionWorkerDiagnostics } from "./resolutionWorker";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -248,6 +249,18 @@ export const appRouter = router({
       } catch (error) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to load leaderboard" });
       }
+    }),
+    completedProofs: publicProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(50).optional() }).optional())
+      .query(async ({ input }) => {
+        try {
+          return await getCompletedHistoricalProofs(input?.limit ?? 10);
+        } catch (error) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Unable to load completed proofs" });
+        }
+      }),
+    workerStatus: publicProcedure.query(() => {
+      return getResolutionWorkerDiagnostics();
     }),
   }),
 });

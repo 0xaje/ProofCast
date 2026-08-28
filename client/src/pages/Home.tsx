@@ -1,7 +1,7 @@
-/* Proof Instrument / Signal Room: live market context is treated as a primary evidence object, with category filtering and instantaneous discovery. */
 import React, { useState, useMemo } from "react";
 import { Link } from "wouter";
 import {
+  ArrowDownRight,
   ArrowUpRight,
   Check,
   CircleDotDashed,
@@ -13,8 +13,15 @@ import {
   Layers,
   Sparkles,
   TrendingUp,
+  Fingerprint,
+  Play,
+  RotateCcw,
+  Scale,
+  ShieldCheck,
+  History,
 } from "lucide-react";
 import { SignalShell, StatusChip } from "@/components/SignalShell";
+import { ProofReplayModal, type CompletedProofItem } from "@/components/ProofReplayModal";
 import { trpc } from "@/lib/trpc";
 
 function timeLabel(seconds: number) {
@@ -31,12 +38,15 @@ type CategoryFilter = "ALL" | "CRYPTO" | "MACRO" | "AI_TECH" | "GOVERNANCE";
 
 export default function Home() {
   const snapshot = trpc.dreamdex.snapshot.useQuery(undefined, { refetchInterval: 15_000, retry: 1 });
+  const completedProofsQuery = trpc.receipts.completedProofs.useQuery({ limit: 6 }, { refetchInterval: 30_000 });
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeReplayProof, setActiveReplayProof] = useState<CompletedProofItem | null>(null);
 
   const data = snapshot.data;
   const rawMarkets = data?.markets ?? [];
   const state = snapshot.isError ? "ERROR" : data?.state;
+  const completedProofs = (completedProofsQuery.data ?? []) as CompletedProofItem[];
 
   // Filter markets by category and search
   const filteredMarkets = useMemo(() => {
@@ -99,25 +109,24 @@ export default function Home() {
         <section className="pi-command-hero">
           <div>
             <div className="pi-kicker">
-              <span>01</span> Signal room / live context
+              <span>01</span> Decision intelligence before commitment · Accountability after resolution
             </div>
             <h1>
-              See the signal.
+              Challenge your thinking.
               <br />
-              <em>Own the decision.</em>
+              <em>Let reality judge it.</em>
             </h1>
             <p>
-              Live Event Contract context is a reference point—not a verdict. Proofcast keeps what the market shows,
-              what you believe, and what later resolves in separate evidence lanes.
+              ProofCast challenges your thinking before you commit with EventForge deterministic analysis and executable edge calculations. Then, reality measures your judgement after the DreamDEX contract resolves.
             </p>
             <div className="pi-head-actions">
               <Link
                 href={lead ? `/market?market=${lead.marketId}` : "/market"}
                 className="pi-action"
               >
-                Review a live market <ArrowUpRight size={16} />
+                Inspect Live Market <ArrowUpRight size={16} />
               </Link>
-              <span className="pi-source-note">No custodial signer · zero order path</span>
+              <span className="pi-source-note">Live-testnet validated · Zero custodial risk</span>
             </div>
           </div>
 
@@ -137,22 +146,68 @@ export default function Home() {
               <b>{state === "LIVE" ? "Verified market context" : "Market context withheld"}</b>
               <span>
                 {state === "LIVE"
-                  ? "DreamDEX Event Contract snapshot"
+                  ? "Somnia DreamDEX Event Contract feed"
                   : snapshot.isError
                   ? "The verified source needs a successful retry."
-                  : "Checking DreamDEX mainnet."}
+                  : "Checking DreamDEX network status."}
               </span>
             </div>
             <div className="pi-instrument-line">
               <span>Market</span>
-              <span>Model</span>
+              <span>EventForge</span>
               <span>You</span>
             </div>
           </aside>
         </section>
 
+        {/* SECTION 1: LIVE DREAMDEX MARKETS HEADER */}
+        <div className="mt-12 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-4">
+          <div>
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c8f06a]">
+              <span className="h-2 w-2 rounded-full bg-[#c8f06a] animate-pulse" /> Section 01 // Live DreamDEX Markets
+            </div>
+            <h2 className="mt-1 font-display text-xl font-semibold tracking-tight text-white sm:text-2xl">
+              Active On-Chain Prediction Signals
+            </h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-md border border-[#c8f06a]/30 bg-[#c8f06a]/10 px-2.5 py-1 text-xs font-mono font-bold text-[#c8f06a]">
+              🟢 Somnia DreamDEX Active ({filteredMarkets.length} Live)
+            </span>
+            <a
+              href="#completed-proofs"
+              className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-mono text-[#8e8c84] hover:text-white transition"
+            >
+              {completedProofs.length} Completed Proofs Ready ↓
+            </a>
+          </div>
+        </div>
+
+        {/* Quiet Trading Hours Guidance Card */}
+        {filteredMarkets.length <= 1 && (
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[#c8f06a]/30 bg-[#c8f06a]/[0.04] p-4 text-xs">
+            <div className="flex items-center gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#c8f06a]/20 text-[#c8f06a] font-bold">
+                ✦
+              </span>
+              <div>
+                <span className="font-bold text-white">Evaluating during quiet market hours?</span>
+                <p className="text-[#a09e96] text-[11px] mt-0.5">
+                  DreamDEX binary contracts run in designated trading windows. Inspect our genuine completed proofs below to see the full 10-point audit trail and Brier calibration score in action.
+                </p>
+              </div>
+            </div>
+            <a
+              href="#completed-proofs"
+              className="inline-flex items-center gap-1 rounded-lg bg-[#c8f06a] px-3.5 py-2 text-xs font-bold text-[#151515] transition hover:bg-[#d8fa7a] whitespace-nowrap self-start sm:self-auto"
+            >
+              Inspect Completed Proofs Replay <ArrowDownRight size={13} />
+            </a>
+          </div>
+        )}
+
         {/* Discovery & Filter Bar */}
-        <section className="mt-8 flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+        <section className="mt-6 flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
           {/* Category Tabs */}
           <div className="flex flex-wrap items-center gap-1.5">
             {[
@@ -201,10 +256,10 @@ export default function Home() {
                 <div className="pi-kicker">
                   <span>Live board</span> Verified windows
                 </div>
-                <h2>Active market reference</h2>
+                <h2>Featured live contract</h2>
               </div>
               <span className="pi-timestamp">
-                {snapshot.isLoading ? "Syncing" : `${filteredMarkets.length} matching signals`}
+                {snapshot.isLoading ? "Syncing" : `${filteredMarkets.length} active contracts`}
               </span>
             </div>
 
@@ -218,10 +273,10 @@ export default function Home() {
               <>
                 <div className="pi-lead-market">
                   <div>
-                    <div className="pi-market-id">{lead.asset} / EVENT CONTRACT</div>
+                    <div className="pi-market-id">{lead.asset} / SOMNIA DREAMDEX</div>
                     <h3>{lead.question}</h3>
                     <p>
-                      Market ID: {lead.marketId.slice(0, 18)}… · Indexed {lead.indexedStatus}
+                      Market ID: {lead.marketId.slice(0, 18)}… · Status: {lead.indexedStatus}
                     </p>
                   </div>
                   <div className="pi-probability">
@@ -254,31 +309,31 @@ export default function Home() {
 
           <aside className="pi-panel pi-loop-panel">
             <div className="pi-kicker">
-              <span>Proof loop</span> Do not collapse the layers
+              <span>Decision loop</span> 3 Core Steps
             </div>
             <div className="pi-loop-step">
               <span>01</span>
               <div>
                 <b>Observe</b>
-                <p>Read the market, its book, and its window.</p>
+                <p>Read the market spread, book, and resolution rules.</p>
               </div>
             </div>
             <div className="pi-loop-step">
               <span>02</span>
               <div>
                 <b>Commit</b>
-                <p>State a forecast and the confidence behind it.</p>
+                <p>Challenge thinking with EventForge & freeze SHA-256 receipt.</p>
               </div>
             </div>
             <div className="pi-loop-step">
               <span>03</span>
               <div>
                 <b>Prove</b>
-                <p>Compare the outcome against the original record.</p>
+                <p>Score Brier calibration when DreamDEX resolves on-chain.</p>
               </div>
             </div>
-            <Link href="/proof" className="pi-text-link">
-              Open proof ledger <ArrowUpRight size={15} />
+            <Link href="/market" className="pi-text-link">
+              Launch Decision Surface <ArrowUpRight size={15} />
             </Link>
           </aside>
         </section>
@@ -288,7 +343,7 @@ export default function Home() {
           <section className="mt-8">
             <div className="mb-4 flex items-center justify-between">
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#6f7b8f]">
-                Discovered DreamDEX Contracts ({filteredMarkets.length})
+                Live DreamDEX Catalog ({filteredMarkets.length})
               </div>
               <span className="font-mono text-[11px] text-[#8b96a8]">Live Somnia Ingestion</span>
             </div>
@@ -343,33 +398,124 @@ export default function Home() {
           </section>
         )}
 
+        {/* SECTION 2: COMPLETED PROOFS & PROOF REPLAY */}
+        <section className="mt-16 border-t border-white/15 pt-10">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#f04b2f]">
+                <Fingerprint size={14} /> Section 02 // Completed Proofs & Proof Replay
+              </div>
+              <h2 className="mt-1 font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                Genuine Resolved Lifecycles
+              </h2>
+              <p className="mt-1 max-w-xl text-xs text-[#8e8c84]">
+                Explore genuine historical DreamDEX lifecycles. Click <b>"Replay Proof"</b> on any record to inspect the complete 10-point audit trail from initial market snapshot to final Brier scoring.
+              </p>
+            </div>
+
+            <Link
+              href="/proof"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition hover:border-[#c8f06a]/40 hover:text-[#c8f06a]"
+            >
+              <History size={14} /> View All Proofs ({completedProofs.length})
+            </Link>
+          </div>
+
+          {completedProofs.length > 0 ? (
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {completedProofs.map((proof) => (
+                <article
+                  key={proof.receiptId}
+                  className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#10141c]/90 p-5 shadow-xl transition-all duration-200 hover:border-[#c8f06a]/40"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-md border border-[#c8f06a]/30 bg-[#c8f06a]/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[#c8f06a]">
+                        {proof.asset}
+                      </span>
+                      <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${proof.resolutionOutcome === "YES" ? "bg-[#c8f06a]/20 text-[#c8f06a]" : "bg-[#f04b2f]/20 text-[#f04b2f]"}`}>
+                        Outcome: {proof.resolutionOutcome}
+                      </span>
+                    </div>
+
+                    <h4 className="mt-3 font-display text-sm font-semibold leading-snug text-white">
+                      {proof.question}
+                    </h4>
+
+                    <div className="mt-3 space-y-1.5 text-xs font-mono text-[#a09e96]">
+                      <div className="flex justify-between">
+                        <span>User Forecast:</span>
+                        <span className="font-bold text-white">
+                          {proof.userProbabilityPercent}% {proof.userDirection}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Brier Score:</span>
+                        <span className="font-bold text-[#c8f06a]">{proof.brierScore.toFixed(4)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Forecaster:</span>
+                        <span className="text-white">{proof.forecasterName}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 border-t border-white/10 pt-4">
+                    <button
+                      onClick={() => setActiveReplayProof(proof)}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#c8f06a] py-2.5 text-xs font-bold uppercase tracking-wider text-[#151515] transition hover:bg-[#d8fa7a] active:scale-[0.98]"
+                    >
+                      <Play size={13} /> Replay Proof (10-Pt Audit)
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center">
+              <History size={32} className="text-[#8e8c84]" />
+              <h3 className="mt-3 text-sm font-bold text-white">No Completed Proofs Yet</h3>
+              <p className="mt-1 max-w-md text-xs text-[#8e8c84]">
+                Completed proofs appear here as active DreamDEX contracts reach resolution and are automatically verified by the resolution worker.
+              </p>
+            </div>
+          )}
+        </section>
+
         {/* Decision Hygiene Section */}
-        <section className="pi-lane-section mt-10">
+        <section className="pi-lane-section mt-16">
           <div className="pi-section-title">
             <div className="pi-kicker">
               <span>Decision hygiene</span> The durable boundary
             </div>
-            <h2>Forecast quality is not trading performance.</h2>
+            <h2>Decision intelligence before commit. Accountability after.</h2>
           </div>
           <div className="pi-lanes">
             <article>
               <CircleDotDashed size={20} />
               <b>Market signal</b>
-              <p>Live, sourced context with a visible freshness state.</p>
+              <p>Live, sourced DreamDEX context with transparent spread and freshness.</p>
             </article>
             <article>
               <Check size={20} />
-              <b>Forecast commitment</b>
-              <p>Your thesis and confidence stay separate from the market.</p>
+              <b>Pre-commit intelligence</b>
+              <p>Deterministic EventForge analysis, market quality, and counter-theses.</p>
             </article>
             <article>
               <FileCheck2 size={20} />
               <b>Proof receipt</b>
-              <p>An outcome record exists only when the inputs can be verified.</p>
+              <p>SHA-256 immutable digest anchored on Somnia Shannon for Brier scoring.</p>
             </article>
           </div>
         </section>
+
+        {/* Proof Replay Modal */}
+        <ProofReplayModal
+          proof={activeReplayProof}
+          onClose={() => setActiveReplayProof(null)}
+        />
       </div>
     </SignalShell>
   );
 }
+

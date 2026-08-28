@@ -202,8 +202,19 @@ export function ProofCardModal({ isOpen, onClose, receipt }: ProofCardModalProps
           <canvas ref={canvasRef} className="h-auto w-full max-w-[560px] rounded-lg shadow-2xl" />
         </div>
 
+        {/* Copy-Ready Tweet / Social Post Preview */}
+        <div className="mt-3 rounded-xl border border-white/10 bg-black/50 p-3">
+          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#8e8c84]">
+            <span>Social Post Preview (X / Farcaster)</span>
+            <span className="text-[#c8f06a]">Ready to Publish</span>
+          </div>
+          <pre className="mt-1.5 font-mono text-xs text-white/90 whitespace-pre-wrap leading-relaxed">
+            {shareText}
+          </pre>
+        </div>
+
         {/* Action Controls */}
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <button
             onClick={downloadImage}
             className="flex h-10 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 text-xs font-semibold text-white transition-all hover:border-white/30 hover:bg-white/10 active:scale-95 cursor-pointer"
@@ -212,9 +223,9 @@ export function ProofCardModal({ isOpen, onClose, receipt }: ProofCardModalProps
           </button>
           <button
             onClick={shareToTwitter}
-            className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[#1DA1F2]/40 bg-[#1DA1F2]/10 text-xs font-semibold text-[#1DA1F2] transition-all hover:bg-[#1DA1F2]/20 active:scale-95 cursor-pointer"
+            className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[#1DA1F2]/40 bg-[#1DA1F2]/10 text-xs font-bold text-[#1DA1F2] transition-all hover:bg-[#1DA1F2]/20 active:scale-95 cursor-pointer"
           >
-            <Share2 size={14} /> Share on X
+            <Share2 size={14} /> Post to X
           </button>
           <button
             onClick={shareToFarcaster}
@@ -226,7 +237,7 @@ export function ProofCardModal({ isOpen, onClose, receipt }: ProofCardModalProps
             onClick={copyProofText}
             className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[#d7f36b]/30 bg-[#d7f36b]/10 text-xs font-bold text-[#d7f36b] transition-all hover:bg-[#d7f36b]/20 active:scale-95 cursor-pointer"
           >
-            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy Link"}
+            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy Tweet"}
           </button>
         </div>
       </DialogContent>

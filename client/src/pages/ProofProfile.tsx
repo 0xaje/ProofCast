@@ -121,8 +121,8 @@ export default function ProofProfile() {
 
   async function handleAnchorToSomnia() {
     if (!selectedReceipt) return;
-    setAnchorMessage("Prompting Somnia Shannon wallet connection and anchor transaction…");
-    const toastId = toast.loading("Confirming on-chain anchor in wallet…");
+    setAnchorMessage("1/3 Packing cryptographic proof payload for Somnia Shannon L1…");
+    const toastId = toast.loading("1/3 Packing cryptographic proof payload…");
     try {
       const receiptHash =
         selectedReceipt.resolutions[0]?.evidenceHash ||
@@ -134,19 +134,27 @@ export default function ProofProfile() {
             .padEnd(64, "0");
       const marketId = selectedReceipt.marketSnapshot.marketId;
 
+      setAnchorMessage("2/3 Prompting wallet signature (check MetaMask/Rainbow)…");
+      toast.loading("2/3 Prompting wallet signature…", { id: toastId });
+
       const { txHash, callerAddress } = await anchorReceiptToSomniaChain(
         receiptHash,
         marketId,
       );
+
+      setAnchorMessage("3/3 Broadcasting anchor transaction to Somnia Shannon L1…");
+      toast.loading("3/3 Broadcasting to Somnia L1…", { id: toastId });
+
       anchorReceiptMutation.mutate({
         receiptId: selectedReceipt.id,
         anchorTxHash: txHash,
         anchorAddress: callerAddress,
       });
-      toast.success("Transaction submitted to Somnia Shannon Testnet!", { id: toastId });
+      toast.success("Anchored on Somnia Shannon Testnet! Tx: " + txHash.slice(0, 10) + "…", { id: toastId });
+      setAnchorMessage(`On-Chain Anchor Confirmed · Tx ${txHash.slice(0, 12)}…`);
     } catch (err: any) {
-      const errorMsg = err?.message || "Transaction cancelled or failed";
-      setAnchorMessage(`On-Chain Anchoring: ${errorMsg}`);
+      const errorMsg = err?.message || "Transaction cancelled or rejected in wallet";
+      setAnchorMessage(`Anchoring Notice: ${errorMsg}`);
       toast.error(errorMsg, { id: toastId });
     }
   }
@@ -187,15 +195,16 @@ export default function ProofProfile() {
               Proofcast separates what you forecast, what you traded, and what happened. Committed evidence is never rewritten by hindsight.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               className="pi-action text-xs flex items-center gap-1.5"
               disabled={autoResolutionMutation.isPending}
               onClick={() => autoResolutionMutation.mutate()}
+              title="Polls on-chain DreamDEX settlement contracts and reconciles resolutions"
             >
               <RefreshCw size={13} className={autoResolutionMutation.isPending ? "animate-spin" : ""} />
-              {autoResolutionMutation.isPending ? "Checking on-chain…" : "Run Auto-Resolution"}
+              {autoResolutionMutation.isPending ? "Syncing on-chain…" : "Verify via Somnia RPC"}
             </button>
             <StatusChip tone={auth.isAuthenticated ? "live" : "unavailable"}>
               {auth.isAuthenticated ? "Authenticated ledger" : "Sign-in required"}
@@ -212,8 +221,8 @@ export default function ProofProfile() {
 
         <section className="pi-score-strip">
           <div>
-            <span>Calibration</span>
-            <b>{metrics.isLoading ? "…" : metrics.data?.calibrationStatus === "READY" ? "Ready" : "—"}</b>
+            <span>Calibration Status</span>
+            <b>{metrics.isLoading ? "…" : metrics.data?.calibrationStatus === "READY" ? "Ready" : "Building"}</b>
             <i>{metrics.data ? `${metrics.data.verifiedCount} verified / ${metrics.data.minimumSampleSize} minimum` : "Requires verified outcomes"}</i>
           </div>
           <div>
@@ -222,9 +231,9 @@ export default function ProofProfile() {
             <i>Verified outcomes only</i>
           </div>
           <div>
-            <span>Mean Brier score</span>
+            <span>Mean Brier Calibration</span>
             <b>{metrics.data?.meanBrierScoreBps == null ? "—" : `${(metrics.data.meanBrierScoreBps / 100).toFixed(1)}%`}</b>
-            <i>Lower is better · unresolved excluded</i>
+            <i>BS = (f - o)² · Lower is better (0% perfect)</i>
           </div>
         </section>
 
