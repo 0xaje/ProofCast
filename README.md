@@ -3,10 +3,11 @@
 # ↗ proofcast
 ### *Predictions are cheap. Proof is not.*
 
-**The forecasting intelligence and cryptographic accountability layer for Somnia DreamDEX Event Contracts.**
+**The forecasting intelligence & cryptographic accountability layer built natively for Somnia DreamDEX Event Contracts.**
 
 [![Somnia Network](https://img.shields.io/badge/Network-Somnia_Shannon_Testnet-c8f06a?style=for-the-badge&logo=ethereum&logoColor=080b10)](https://shannon-explorer.somnia.network)
 [![Smart Contract](https://img.shields.io/badge/Solidity-0.8.20_Verified-f04b2f?style=for-the-badge&logo=solidity&logoColor=white)](contracts/ProofCastAnchor.sol)
+[![DreamDEX](https://img.shields.io/badge/DEX-DreamDEX_Event_Contracts-38bdf8?style=for-the-badge&logo=polkadot&logoColor=white)](https://docs.dreamdex.io)
 [![EIP-712](https://img.shields.io/badge/Cryptography-EIP--712_%2B_SHA--256-blue?style=for-the-badge&logo=letsencrypt&logoColor=white)](shared/eip712.ts)
 [![Tests](https://img.shields.io/badge/Tests-42%2F42_Passed-emerald?style=for-the-badge&logo=vitest&logoColor=white)](server/receipts.test.ts)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict_0_Errors-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](tsconfig.json)
@@ -37,26 +38,40 @@ ProofCast transforms speculative market noise into immutable decision intelligen
 $$\mathbf{OBSERVE} \longrightarrow \mathbf{UNDERSTAND} \longrightarrow \mathbf{CHALLENGE} \longrightarrow \mathbf{COMMIT} \longrightarrow \mathbf{ANCHOR} \longrightarrow \mathbf{RESOLVE} \longrightarrow \mathbf{PROVE}$$
 
 ```mermaid
-flowchart LR
-  subgraph PreDecision [1. Intelligence & Challenge]
-    A["01. Observe: Live DreamDEX Market Signal"] --> B["02. Understand: EventForge Multi-Model AI"]
-    B --> C["03. Challenge: Counter-Thesis & Invalidation Triggers"]
+graph LR
+  subgraph Phase1 [1. Intelligence]
+    A[01. Observe: DreamDEX Signals] --> B[02. Understand: EventForge AI]
+    B --> C[03. Challenge: Counter-Thesis]
   end
 
-  subgraph Commitment [2. Cryptographic Commitment]
-    C --> D["04. Commit: EIP-712 SHA-256 Decision Receipt"]
-    D --> E["05. Anchor: Somnia Smart Contract + $SOM Stake"]
+  subgraph Phase2 [2. Commitment]
+    C --> D[04. Commit: EIP-712 Receipt]
+    D --> E[05. Anchor: Somnia Smart Contract]
   end
 
-  subgraph Accountability [3. Automated Resolution & Scoring]
-    E --> F["06. Resolve: 100% Automated Oracle Settlement"]
-    F --> G["07. Prove: Brier Score Calibration & Soulbound SBT"]
+  subgraph Phase3 [3. Accountability]
+    E --> F[06. Resolve: Automated Settlement]
+    F --> G[07. Prove: Brier Calibration]
   end
+```
 
-  style A fill:#0c1a16,stroke:#c8f06a,stroke-width:2px,color:#c8f06a
-  style D fill:#16120c,stroke:#f59e0b,stroke-width:2px,color:#fcd34d
-  style E fill:#1a0c0c,stroke:#f04b2f,stroke-width:2px,color:#f87171
-  style G fill:#080b10,stroke:#38bdf8,stroke-width:2px,color:#38bdf8
+---
+
+## 🌐 Native Somnia & DreamDEX Architecture
+
+ProofCast is engineered from the ground up for the **Somnia High-Performance L1 Blockchain** (`Chain ID: 50312`) and the **DreamDEX Prediction Market Protocol**:
+
+```
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │                         SOMNIA BLOCKCHAIN ECOSYSTEM                         │
+ ├──────────────────────────────────────┬──────────────────────────────────────┤
+ │         DreamDEX Protocol            │        ProofCast Protocol            │
+ │  • Binary Event Contracts            │  • EventForge Multi-Model AI Engine  │
+ │  • Order Book Spread & Depth         │  • SHA-256 Decision Receipts         │
+ │  • ERC-6909 Outcome Tokens           │  • ProofCastAnchor.sol Contract      │
+ │  • Automated Contract Settlement     │  • Payable Native $SOM Staking       │
+ │  • Official @somnia-chain/markets-sdk│  • Soulbound Forecaster Badges (SBT) │
+ └──────────────────────────────────────┴──────────────────────────────────────┘
 ```
 
 ---
@@ -110,43 +125,42 @@ flowchart LR
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ System Architecture
 
 ```mermaid
-flowchart TD
-  subgraph Browser_Client ["Client Layer (React 19 / Vite / Tailwind)"]
-    Landing["Landing Page (Editorial Hero & Live Telemetry)"]
-    SignalRoom["Signal Room (Market Discovery & Order Books)"]
-    Decision["Decision Workspace (Triangulated Comparison & SSE)"]
-    Profile["Proof Profile (Anchors, Receipts & CSV Export)"]
-    Leaderboard["Leaderboard (Rankings & Soulbound Badges)"]
-    ConnectPill["Web3 Connect Status Widget"]
+graph TD
+  subgraph Client [Client Layer: React 19 / Vite]
+    Landing[Landing Page & Live Telemetry]
+    Signal[Signal Room & Market Discovery]
+    Decision[Market Decision Workspace]
+    Profile[Proof Profile & Receipt Archive]
+    Leaderboard[Leaderboard & SBT Badges]
   end
 
-  subgraph Server_Backend ["Server Backend (Express 4 / tRPC / Node.js)"]
-    TRPC["tRPC API Router"]
-    DreamDEXService["DreamDEX Snapshot Service (5s TTL Cache)"]
-    EventForgeEngine["EventForge Multi-Model Engine"]
-    SSEHandler["SSE Stream (/api/eventforge/stream)"]
-    WorkerDaemon["Resolution Worker Daemon (60s Polling)"]
-    OracleWebhook["Oracle Webhook (/api/oracle/resolve)"]
-    ScoringEngine["Brier Scoring & Calibration Engine"]
+  subgraph Server [Server Layer: Express / tRPC]
+    TRPC[tRPC API Router]
+    DreamDEXService[DreamDEX Snapshot Service]
+    EventForgeEngine[EventForge Multi-Model AI]
+    SSEHandler[SSE Token Stream /api/eventforge/stream]
+    WorkerDaemon[Automated Resolution Worker]
+    OracleWebhook[Oracle Webhook /api/oracle/resolve]
+    ScoringEngine[Brier Scoring & Calibration Engine]
   end
 
-  subgraph Somnia_Blockchain ["Somnia Network (Chain ID 50312)"]
-    DreamDEXPools["DreamDEX Binary Event Contracts"]
-    AnchorContract["ProofCastAnchor.sol (Anchors, Stakes, SBTs)"]
+  subgraph Somnia [Somnia Shannon Testnet: Chain 50312]
+    DreamDEXContracts[DreamDEX Binary Event Contracts]
+    AnchorContract[ProofCastAnchor.sol Smart Contract]
   end
 
-  subgraph Storage_Layer ["Database Layer (Drizzle ORM / MySQL)"]
-    DBSnapshots[("market_snapshots")]
-    DBForecasts[("forecasts")]
-    DBReceipts[("decision_receipts")]
-    DBRevisions[("forecast_revisions")]
-    DBResolutions[("receipt_resolutions")]
+  subgraph Database [Database: Drizzle ORM / MySQL]
+    DBSnapshots[(market_snapshots)]
+    DBForecasts[(forecasts)]
+    DBReceipts[(decision_receipts)]
+    DBRevisions[(forecast_revisions)]
+    DBResolutions[(receipt_resolutions)]
   end
 
-  SignalRoom --> TRPC
+  Signal --> TRPC
   Decision --> TRPC
   Decision --> SSEHandler
   Profile --> TRPC
@@ -158,12 +172,12 @@ flowchart TD
   TRPC --> DBForecasts
   TRPC --> DBReceipts
 
-  DreamDEXService --> DreamDEXPools
-  WorkerDaemon --> DreamDEXPools
+  DreamDEXService --> DreamDEXContracts
+  WorkerDaemon --> DreamDEXContracts
   WorkerDaemon --> DBResolutions
   OracleWebhook --> DBResolutions
 
-  Decision -. EIP-712 Sign & Stake .-> AnchorContract
+  Decision -. User Staking .-> AnchorContract
   Profile -. Verify Anchor .-> AnchorContract
 ```
 
@@ -233,5 +247,6 @@ Use the following settings for the repository's "About" section on GitHub:
 ## 📜 License
 
 ProofCast is open-source software licensed under the [MIT License](LICENSE).
+
 
 
