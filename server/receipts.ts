@@ -17,6 +17,8 @@ import {
   type InsertMarketSnapshot,
 } from "../drizzle/schema";
 import type { DreamDexMarketSnapshot, DreamDexSnapshot } from "./dreamdex";
+import { verifyTypedData } from "viem";
+import { PROOFCAST_EIP712_DOMAIN, PROOFCAST_EIP712_TYPES } from "../shared/eip712";
 import { getDb } from "./db";
 import { calculateCalibrationMetrics, scoreVerifiedOutcome, selectForecastAtResolution } from "./scoring";
 import { computeDeterministicModel } from "./eventforge/model";
@@ -30,6 +32,11 @@ export type CreateReceiptInput = Pick<
   tradeTxHash?: string;
   tradeOrderId?: string;
   tradeStatus?: string;
+  signerAddress?: string;
+  eip712Signature?: string;
+  commitmentTimestamp?: number;
+  stakeAmountWei?: string;
+  stakeTxHash?: string;
 };
 
 export type ResolutionEvidenceInput = {
@@ -46,6 +53,34 @@ export function hashEvidenceCommitment(outcome: ResolutionEvidenceInput["outcome
 }
 
 export const hashResolutionEvidence = hashEvidenceCommitment;
+
+export async function verifyForecastReceiptSignature(
+  input: CreateReceiptInput,
+  timestampSec: number,
+): Promise<boolean> {
+  if (!input.eip712Signature || !input.signerAddress) return false;
+  try {
+    const isValid = await verifyTypedData({
+      address: input.signerAddress as `0x${string}`,
+      domain: PROOFCAST_EIP712_DOMAIN,
+      types: PROOFCAST_EIP712_TYPES,
+      primaryType: "ForecastCommitment",
+      message: {
+        marketId: input.marketId,
+        direction: input.direction,
+        probabilityBps: BigInt(input.probabilityBps),
+        confidence: input.confidence,
+        thesis: input.thesis,
+        counterThesis: input.counterThesis,
+        timestamp: BigInt(input.commitmentTimestamp ?? timestampSec),
+      },
+      signature: input.eip712Signature as `0x${string}`,
+    });
+    return isValid;
+  } catch {
+    return false;
+  }
+}
 
 export function validateEvidenceSourceUrl(rawUrl: string): string {
   const url = new URL(rawUrl.trim());
@@ -195,6 +230,14 @@ export async function createDecisionReceipt(
   const qualityOutput = evaluateMarketQuality(market);
   const edgeOutput = calculateExecutableEdge(input.probabilityBps, input.direction, market, modelOutput.modelProbabilityBps);
 
+  if (input.eip712Signature || input.signerAddress) {
+    const timestampSec = input.commitmentTimestamp ?? Math.floor(snapshot.asOf! / 1000);
+    const validSignature = await verifyForecastReceiptSignature(input, timestampSec);
+    if (!validSignature) {
+      throw new Error("Invalid or tampered EIP-712 forecast signature");
+    }
+  }
+
   const db = database ?? await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -225,6 +268,11 @@ export async function createDecisionReceipt(
       tradeTxHash: input.tradeTxHash || null,
       tradeOrderId: input.tradeOrderId || null,
       tradeStatus: input.tradeStatus || "NONE",
+      signerAddress: input.signerAddress || null,
+      eip712Signature: input.eip712Signature || null,
+      stakeAmountWei: input.stakeAmountWei || null,
+      stakeTxHash: input.stakeTxHash || null,
+      stakeStatus: input.stakeAmountWei ? "STAKED" : "NONE",
     });
     return insertId(receiptResult);
   });
@@ -420,6 +468,7 @@ export interface LeaderboardEntry {
   directionalAccuracyPct: number | null;
   status: "PROVEN" | "CALIBRATING" | "EMERGING";
   badges: LeaderboardBadge[];
+  forecasterBadge: ReturnType<typeof import("./scoring").determineForecasterBadge>;
 }
 
 export async function getGlobalLeaderboard(database?: ReceiptDatabase): Promise<LeaderboardEntry[]> {
@@ -468,6 +517,7 @@ export async function getGlobalLeaderboard(database?: ReceiptDatabase): Promise<
       directionalAccuracyPct: metrics.directionalAccuracyPct,
       status,
       badges,
+      forecasterBadge: metrics.badge,
     });
   }
 

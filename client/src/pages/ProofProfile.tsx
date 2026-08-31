@@ -253,45 +253,78 @@ export default function ProofProfile() {
               Retry metrics <ArrowUpRight size={15} />
             </button>
           </section>
-        ) : (
-          auth.isAuthenticated &&
-          metrics.data && (
-            <section className="pi-panel pi-calibration-panel" data-testid="calibration-metrics">
-              <div className="pi-panel-head">
-                <div>
-                  <div className="pi-kicker">
-                    <span>Calibration bins</span> Verified evidence only
-                  </div>
-                  <h2>
-                    {metrics.data.calibrationStatus === "READY"
-                      ? "Enough resolved history to inspect calibration."
-                      : "Calibration is not claimed yet."}
-                  </h2>
+        ) : null}
+
+        {auth.isAuthenticated && metrics.data?.badge && (
+          <section className="pi-panel pi-badge-hero rounded-2xl border border-white/10 bg-gradient-to-r from-[#121824] to-[#080b10] p-5">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#d7f36b]/40 bg-[#d7f36b]/10 text-2xl shadow-[0_0_20px_rgba(215,243,107,0.15)]">
+                  {metrics.data.badge.tier === "GOLD_MASTER"
+                    ? "👑"
+                    : metrics.data.badge.tier === "SILVER"
+                    ? "🥈"
+                    : metrics.data.badge.tier === "BRONZE"
+                    ? "🥉"
+                    : "🌱"}
                 </div>
-                <StatusChip tone={metrics.data.calibrationStatus === "READY" ? "live" : "snapshot"}>
-                  {metrics.data.calibrationStatus === "READY" ? "Ready" : "Insufficient sample"}
-                </StatusChip>
+                <div>
+                  <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#8b96a8]">
+                    Verifiable Reputation Tier
+                  </div>
+                  <div className="text-lg font-bold text-white flex items-center gap-2">
+                    {metrics.data.badge.title}
+                    <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-mono text-[#d7f36b]">
+                      Tier {metrics.data.badge.tierCode}
+                    </span>
+                  </div>
+                  <div className="text-xs text-[#8b96a8] mt-0.5">{metrics.data.badge.description}</div>
+                </div>
               </div>
-              <div className="pi-detail-grid">
-                {metrics.data.bins
-                  .filter(bin => bin.count > 0)
-                  .map(bin => (
-                    <div key={bin.lowerBps}>
-                      <span>
-                        {(bin.lowerBps / 100).toFixed(0)}–{(bin.upperBps / 100).toFixed(0)}% forecasts · {bin.count} receipt
-                        {bin.count === 1 ? "" : "s"}
-                      </span>
-                      <b>
-                        Predicted {(bin.predictedBps / 100).toFixed(1)}% / observed {(bin.observedBps / 100).toFixed(1)}%
-                      </b>
-                    </div>
-                  ))}
+              <div className="text-right font-mono">
+                <div className="text-[10px] uppercase text-[#6f7b8f]">Verified Proofs</div>
+                <div className="text-xl font-bold text-white">{metrics.data.verifiedCount} / 30</div>
               </div>
-              <p className="pi-lock-note">
-                {metrics.data.excludedCount} receipt{metrics.data.excludedCount === 1 ? "" : "s"} excluded because evidence is unresolved, rejected, or void.
-              </p>
-            </section>
-          )
+            </div>
+          </section>
+        )}
+
+        {auth.isAuthenticated && metrics.data && !(metrics.data.calibrationStatus === "INSUFFICIENT_SAMPLE" && metrics.data.bins.filter(bin => bin.count > 0).length === 0) && (
+          <section className="pi-panel pi-bins-panel" data-testid="calibration-bins">
+            <div className="pi-panel-head">
+              <div>
+                <div className="pi-kicker">
+                  <span>Calibration bins</span> Verified evidence only
+                </div>
+                <h2>
+                  {metrics.data.calibrationStatus === "READY"
+                    ? "Enough resolved history to inspect calibration."
+                    : "Calibration is not claimed yet."}
+                </h2>
+              </div>
+              <StatusChip tone={metrics.data.calibrationStatus === "READY" ? "live" : "snapshot"}>
+                {metrics.data.calibrationStatus === "READY" ? "Ready" : "Insufficient sample"}
+              </StatusChip>
+            </div>
+            <div className="pi-detail-grid">
+              {metrics.data.bins
+                .filter(bin => bin.count > 0)
+                .map(bin => (
+                  <div key={bin.lowerBps}>
+                    <span>
+                      {(bin.lowerBps / 100).toFixed(0)}–{(bin.upperBps / 100).toFixed(0)}% forecasts · {bin.count} receipt
+                      {bin.count === 1 ? "" : "s"}
+                    </span>
+                    <b>
+                      Predicted {(bin.predictedBps / 100).toFixed(1)}% / observed {(bin.observedBps / 100).toFixed(1)}%
+                    </b>
+                  </div>
+                ))}
+            </div>
+            <p className="pi-lock-note">
+              {metrics.data.excludedCount} receipt{metrics.data.excludedCount === 1 ? "" : "s"} excluded because evidence is unresolved, rejected, or void.
+            </p>
+          </section>
         )}
 
         {auth.isAuthenticated && metrics.data && (

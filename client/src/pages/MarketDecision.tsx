@@ -16,12 +16,14 @@ import {
   Scale,
   ShieldCheck,
 } from "lucide-react";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import { AnimatedComparisonBar } from "@/components/AnimatedComparisonBar";
 import { SignalShell, StatusChip } from "@/components/SignalShell";
+import { ModelComparisonSelector } from "@/components/ModelComparisonSelector";
+import type { ModelId } from "../../../server/eventforge/models/types";
 import { trpc } from "@/lib/trpc";
 
 type DecisionStage = "DRAFT" | "REVIEW" | "COMMITTED";
@@ -43,10 +45,12 @@ function qualityTone(quality: string | undefined) {
 }
 
 export default function MarketDecision() {
-  const search = useSearch();
-  const requestedId = new URLSearchParams(search).get("market");
   const auth = useAuth();
   const wallet = useWallet();
+  const search = useSearch();
+  const searchParams = new URLSearchParams(search);
+  const requestedId = searchParams.get("market");
+
   const snapshot = trpc.dreamdex.snapshot.useQuery(undefined, { refetchInterval: 15_000, retry: 1 });
   const utils = trpc.useUtils();
 
@@ -60,10 +64,52 @@ export default function MarketDecision() {
   const state = snapshot.isError ? "ERROR" : data?.state;
   const market = data?.markets.find(item => item.marketId === requestedId) ?? data?.markets[0];
 
-  const eventforgeQuery = trpc.eventforge.analyze.useQuery(
+  const [selectedModelId, setSelectedModelId] = useState<ModelId>("ensemble-oracle");
+  const [stakeAmount, setStakeAmount] = useState<number>(0);
+  const [streamingReasoning, setStreamingReasoning] = useState<{ [key: string]: string }>({});
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  const multiModelQuery = trpc.eventforge.analyzeMultiModel.useQuery(
     { marketId: market?.marketId ?? "" },
     { enabled: !!market?.marketId, refetchInterval: 20_000 }
   );
+
+  // Real-time EventForge SSE token streaming
+  React.useEffect(() => {
+    if (!market?.marketId) return;
+    setIsStreaming(true);
+    setStreamingReasoning({});
+
+    const eventSource = new EventSource(`/api/eventforge/stream?marketId=${encodeURIComponent(market.marketId)}`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "token" && data.section) {
+          setStreamingReasoning((prev) => ({
+            ...prev,
+            [data.section]: (prev[data.section] ?? "") + data.token,
+          }));
+        } else if (data.type === "complete" || data.type === "error") {
+          setIsStreaming(false);
+          eventSource.close();
+        }
+      } catch {
+        // Safe stream token parse fallback
+      }
+    };
+
+    eventSource.onerror = () => {
+      setIsStreaming(false);
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+      setIsStreaming(false);
+    };
+  }, [market?.marketId]);
 
   const [viewMode, setViewMode] = useState<"SIMPLE" | "QUANT">("SIMPLE");
   const [stage, setStage] = useState<DecisionStage>("DRAFT");
@@ -79,8 +125,13 @@ export default function MarketDecision() {
   const [commitError, setCommitError] = useState<string | null>(null);
 
   const marketProbability = market?.midPercent ?? market?.lastPricePercent;
-  const modelProbability = eventforgeQuery.data?.model ? eventforgeQuery.data.model.modelProbabilityBps / 100 : undefined;
-  const marketQuality = eventforgeQuery.data?.quality;
+  const activeModelPrediction = multiModelQuery.data?.models[selectedModelId];
+  const modelProbability = activeModelPrediction
+    ? activeModelPrediction.probabilityBps / 100
+    : multiModelQuery.data?.consensus
+    ? multiModelQuery.data.consensus.ensembleProbabilityBps / 100
+    : undefined;
+  const marketQuality = multiModelQuery.data?.quality;
 
   const gap = marketProbability == null ? null : forecast - marketProbability;
   const modelGap = modelProbability == null || marketProbability == null ? null : modelProbability - marketProbability;
@@ -91,15 +142,26 @@ export default function MarketDecision() {
   const executablePrice = side === "UP" ? bestAsk : 100 - bestBid;
   const executableEdge = forecast - executablePrice - (market?.spreadBps && market.spreadBps > 400 ? 0.75 : 0.3);
 
+  const modelLabel =
+    selectedModelId === "ensemble-oracle"
+      ? "EventForge (Meta-Oracle)"
+      : selectedModelId === "deepseek-r1"
+      ? "EventForge (DeepSeek R1)"
+      : selectedModelId === "gemini-1.5-flash"
+      ? "EventForge (Gemini 1.5)"
+      : selectedModelId === "claude-3.5-sonnet"
+      ? "EventForge (Claude 3.5)"
+      : "EventForge (Microstructure)";
+
   const comparisonRows = [
     { label: "Market", value: marketProbability, kind: "source" as const, className: "market" },
-    { label: "EventForge", value: modelProbability, kind: "source" as const, className: "model" },
+    { label: modelLabel, value: modelProbability, kind: "source" as const, className: "model" },
     { label: "You", value: forecast, kind: "local" as const, className: "you" },
   ];
 
   const canReview = thesis.trim().length > 0 && counterThesis.trim().length > 0;
 
-  const handleCommit = () => {
+  const handleCommit = async () => {
     if (!market) return;
     if (!auth.isAuthenticated && !wallet.address) {
       setCommitError("Connect your Web3 wallet to create a verifiable Decision Receipt.");
@@ -107,6 +169,29 @@ export default function MarketDecision() {
       return;
     }
     setCommitError(null);
+
+    let signature: string | undefined = undefined;
+    let signerAddress: string | undefined = undefined;
+    const nowTimestamp = Math.floor(Date.now() / 1000);
+
+    if (wallet.isConnected && wallet.address) {
+      signerAddress = wallet.address;
+      const sig = await wallet.signForecastCommitment({
+        marketId: market.marketId,
+        direction: side,
+        probabilityBps: forecast * 100,
+        confidence,
+        thesis: thesis.trim(),
+        counterThesis: counterThesis.trim(),
+        timestamp: nowTimestamp,
+      });
+      if (sig) {
+        signature = sig;
+      }
+    }
+
+    const stakeWei = stakeAmount > 0 ? (BigInt(stakeAmount) * 10n ** 18n).toString() : undefined;
+
     commitReceipt.mutate(
       {
         marketId: market.marketId,
@@ -115,6 +200,10 @@ export default function MarketDecision() {
         confidence,
         thesis: thesis.trim(),
         counterThesis: counterThesis.trim(),
+        signerAddress,
+        eip712Signature: signature,
+        commitmentTimestamp: signature ? nowTimestamp : undefined,
+        stakeAmountWei: stakeWei,
       },
       {
         onSuccess: () => setStage("COMMITTED"),
@@ -321,112 +410,61 @@ export default function MarketDecision() {
                   <div className="pi-panel-head">
                     <div>
                       <div className="pi-kicker">
-                        <span>Evidence Column</span> Live Somnia DreamDEX Book
+                        <span>01 / Provenance</span> On-Chain Resting Liquidity
                       </div>
-                      <h2>Order Book & Depth</h2>
+                      <h2>Verified Order Book & Depth</h2>
                     </div>
                     <div className="flex items-center gap-2">
+                      <StatusChip tone={toneForState(state)}>{state ?? "LIVE"}</StatusChip>
                       <a
                         href={`https://prd.smk.somnia.host/v1/graphql#market-${market.marketId}`}
                         target="_blank"
                         rel="noreferrer"
                         className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[#c8f06a] hover:underline"
                       >
-                        Contract Source <ArrowUpRight size={12} />
+                        Contract <ArrowUpRight size={12} />
                       </a>
                     </div>
                   </div>
 
-                  <div className="pi-book-head">
-                    <span>Ask price</span>
-                    <span>Size</span>
-                  </div>
-                  <div className="pi-book-list">
-                    {market.yesAsks.length ? (
-                      market.yesAsks.slice(0, showDeepBook ? 10 : 3).map(row => (
-                        <div key={`a-${row.pricePercent}-${row.quantity}`}>
-                          <b>{row.pricePercent.toFixed(2)}%</b>
-                          <span>{row.quantity}</span>
+                  <div className="pi-book-columns">
+                    {market.yesAsks.length > 0 ? (
+                      <div className="pi-book-column ask">
+                        <span className="pi-book-column-title">YES Asks (Sellers)</span>
+                        <div className="space-y-1">
+                          {market.yesAsks.slice(0, showDeepBook ? 10 : 3).map((ask, idx) => (
+                            <div key={idx} className="pi-book-row">
+                              <span className="font-mono font-bold text-white">{ask.pricePercent.toFixed(1)}%</span>
+                              <span className="font-mono text-[#8e8c84]">{ask.quantity}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))
+                      </div>
                     ) : (
                       <p>No current YES asks returned.</p>
                     )}
-                  </div>
-                  <div className="pi-book-mid">
-                    <span>Midpoint</span>
-                    <b>{marketProbability == null ? "—" : `${marketProbability.toFixed(2)}%`}</b>
-                  </div>
-                  <div className="pi-book-list bids">
-                    {market.yesBids.length ? (
-                      market.yesBids.slice(0, showDeepBook ? 10 : 3).map(row => (
-                        <div key={`b-${row.pricePercent}-${row.quantity}`}>
-                          <b>{row.pricePercent.toFixed(2)}%</b>
-                          <span>{row.quantity}</span>
+
+                    {market.yesBids.length > 0 ? (
+                      <div className="pi-book-column bid">
+                        <span className="pi-book-column-title">YES Bids (Buyers)</span>
+                        <div className="space-y-1">
+                          {market.yesBids.slice(0, showDeepBook ? 10 : 3).map((bid, idx) => (
+                            <div key={idx} className="pi-book-row">
+                              <span className="font-mono font-bold text-white">{bid.pricePercent.toFixed(1)}%</span>
+                              <span className="font-mono text-[#8e8c84]">{bid.quantity}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))
+                      </div>
                     ) : (
                       <p>No current YES bids returned.</p>
                     )}
                   </div>
 
-                  {market.yesAsks.length > 3 && (
-                    <button
-                      onClick={() => setShowDeepBook(!showDeepBook)}
-                      className="mt-2 text-[11px] font-bold uppercase tracking-wider text-[#8e8c84] hover:text-white"
-                    >
-                      {showDeepBook ? "Collapse depth" : `Show ${market.yesAsks.length} levels`}
-                    </button>
-                  )}
-
                   <div className="pi-lock-note mt-3">
                     <Activity size={14} className="text-[#c8f06a]" />
                     Executable ask: <b>{bestAsk.toFixed(1)}%</b> · Executable bid: <b>{bestBid.toFixed(1)}%</b> · Spread: <b>{market.spreadBps ?? 0} bps</b>
                   </div>
-                </div>
-
-                {/* 2. EVENTFORGE PRE-COMMIT INTELLIGENCE (Shown when tab is INTELLIGENCE on mobile or always on desktop) */}
-                <div className={`pi-panel ${mobileTab === "MARKET" ? "hidden lg:block" : ""}`}>
-                  <div className="pi-panel-head">
-                    <div>
-                      <div className="pi-kicker text-[#c8f06a]">
-                        <Cpu size={12} className="inline mr-1" /> Pre-Commit Intelligence // Layer A + B
-                      </div>
-                      <h2>EventForge Analysis</h2>
-                    </div>
-                    <span className="rounded bg-[#c8f06a]/15 px-2 py-0.5 font-mono text-xs font-bold text-[#c8f06a]">
-                      {eventforgeQuery.data?.model.modelConfidence ?? "Deterministic"} Model
-                    </span>
-                  </div>
-
-                  {eventforgeQuery.data?.reasoning ? (
-                    <div className="mt-4 space-y-3">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
-                        <div className="rounded-lg border border-white/5 bg-black/30 p-3">
-                          <b className="mb-1 block font-bold text-[#c8f06a]">Bullish Microstructure</b>
-                          <p className="text-white/70 leading-relaxed">{eventforgeQuery.data.reasoning.bullCase}</p>
-                        </div>
-                        <div className="rounded-lg border border-[#f04b2f]/20 bg-black/30 p-3">
-                          <b className="mb-1 block font-bold text-[#f04b2f]">Downside Risk Thesis</b>
-                          <p className="text-white/70 leading-relaxed">{eventforgeQuery.data.reasoning.bearCase}</p>
-                        </div>
-                      </div>
-
-                      <div className="rounded-lg border border-white/5 bg-black/20 p-3 text-xs">
-                        <div className="flex items-center justify-between text-[#8e8c84]">
-                          <span className="font-bold text-white">Disagreement Analysis:</span>
-                          <span className="text-[#c8f06a]">Uncertainty: {eventforgeQuery.data.reasoning.uncertaintyLevel}</span>
-                        </div>
-                        <p className="mt-1 text-white/80 leading-relaxed">
-                          {eventforgeQuery.data.reasoning.disagreementAnalysis}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-4 text-xs text-[#8e8c84]">
-                      Calculating dual-layer EventForge intelligence…
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -600,6 +638,32 @@ export default function MarketDecision() {
                                 <p className="text-white/90 text-xs mt-0.5 leading-relaxed">{counterThesis}</p>
                               </div>
 
+                              {/* Stake Selection */}
+                              <div className="rounded-lg bg-white/5 p-2.5 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[#c8f06a] text-[10px] uppercase font-bold flex items-center gap-1">
+                                    💰 Stake $SOM (Optional Conviction Pool)
+                                  </span>
+                                  <span className="text-white text-xs font-mono font-bold">{stakeAmount} SOM</span>
+                                </div>
+                                <div className="grid grid-cols-4 gap-1.5">
+                                  {[0, 1, 5, 25].map((amt) => (
+                                    <button
+                                      key={amt}
+                                      type="button"
+                                      onClick={() => setStakeAmount(amt)}
+                                      className={`py-1 text-[11px] font-mono font-bold rounded border transition ${
+                                        stakeAmount === amt
+                                          ? "border-[#c8f06a] bg-[#c8f06a]/20 text-[#c8f06a]"
+                                          : "border-white/10 bg-black/40 text-[#8e8c84] hover:text-white"
+                                      }`}
+                                    >
+                                      {amt === 0 ? "None" : `${amt} SOM`}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
                               <div className="flex items-center justify-between rounded-lg bg-black/40 p-2 text-[11px] font-mono border border-white/5">
                                 <span className="text-[#8e8c84]">Executable Edge (net):</span>
                                 <b className={executableEdge > 0 ? "text-[#c8f06a]" : "text-[#f04b2f]"}>
@@ -614,7 +678,11 @@ export default function MarketDecision() {
                               disabled={commitReceipt.isPending}
                               onClick={handleCommit}
                             >
-                              {commitReceipt.isPending ? "Hashing & Committing…" : "Freeze & Commit SHA-256 Receipt"}
+                              {commitReceipt.isPending
+                                ? "Hashing & Committing…"
+                                : stakeAmount > 0
+                                ? `Freeze & Stake ${stakeAmount} SOM`
+                                : "Freeze & Commit SHA-256 Receipt"}
                             </button>
                             <button
                               type="button"
@@ -652,6 +720,42 @@ export default function MarketDecision() {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* MOBILE FLOATING COLLAPSIBLE 3-WAY COMPARISON DRAWER */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 block lg:hidden border-t border-white/10 bg-[#0d1117]/95 p-3 backdrop-blur-md shadow-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#8e8c84]">Stack:</span>
+                  <span className="font-mono text-xs text-white">M: <b>{marketProbability?.toFixed(1)}%</b></span>
+                  <span className="font-mono text-xs text-[#c8f06a]">AI: <b>{modelProbability?.toFixed(1)}%</b></span>
+                  <span className="font-mono text-xs text-[#f04b2f]">You: <b>{forecast}%</b></span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
+                  className="rounded-md bg-white/10 px-2 py-1 text-[10px] font-bold uppercase text-[#c8f06a] hover:bg-white/20"
+                >
+                  {mobileDrawerOpen ? "Hide Details ▲" : "Expand ▼"}
+                </button>
+              </div>
+
+              {mobileDrawerOpen && (
+                <div className="mt-3 space-y-2 border-t border-white/10 pt-2 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#8e8c84]">Executable Edge:</span>
+                    <b className={executableEdge > 0 ? "text-[#c8f06a]" : "text-[#f04b2f]"}>
+                      {executableEdge > 0 ? `+${executableEdge.toFixed(1)}%` : `${executableEdge.toFixed(1)}%`}
+                    </b>
+                  </div>
+                  {isStreaming && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#c8f06a]">
+                      <span className="h-1.5 w-1.5 animate-ping rounded-full bg-[#c8f06a]" />
+                      <span>Live EventForge SSE streaming active…</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}

@@ -28,7 +28,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-import { pollAndResolveDreamDexReceipts } from "../resolutionWorker";
+import { pollAndResolveDreamDexReceipts, resolveMarketByOracle } from "../resolutionWorker";
+import { handleEventForgeStream } from "../eventforge/streaming";
 
 async function startServer() {
   const app = express();
@@ -38,6 +39,36 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+
+  // Real-time EventForge Multi-Model SSE Stream
+  app.get("/api/eventforge/stream", handleEventForgeStream);
+
+  // Automated UMA / Chainlink Oracle Webhook Resolver
+  app.post("/api/oracle/resolve", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const customSecret = req.headers["x-oracle-secret"];
+      const configuredSecret = process.env.ORACLE_WEBHOOK_SECRET;
+
+      if (configuredSecret) {
+        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : customSecret;
+        if (token !== configuredSecret) {
+          return res.status(401).json({ error: "Unauthorized oracle webhook signature" });
+        }
+      }
+
+      const { marketId, outcome, oracleSource, resolutionTxHash } = req.body;
+      if (!marketId || !outcome || !["YES", "NO", "VOID"].includes(outcome)) {
+        return res.status(400).json({ error: "Invalid oracle payload (marketId and outcome YES/NO/VOID required)" });
+      }
+      const result = await resolveMarketByOracle(marketId, outcome, oracleSource, resolutionTxHash);
+      return res.json({ success: true, ...result });
+    } catch (err) {
+      console.error("[Oracle Webhook] Error resolving market:", err);
+      return res.status(500).json({ error: err instanceof Error ? err.message : "Oracle settlement failed" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

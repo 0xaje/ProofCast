@@ -13,7 +13,6 @@ const Home = lazy(() => import("./pages/Home"));
 const MarketDecision = lazy(() => import("./pages/MarketDecision"));
 const ProofProfile = lazy(() => import("./pages/ProofProfile"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
-const AdminReviewQueue = lazy(() => import("./pages/AdminReviewQueue"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function PageLoader() {
@@ -46,7 +45,9 @@ function Router() {
         <Route path="/market" component={MarketDecision} />
         <Route path="/proof" component={ProofProfile} />
         <Route path="/leaderboard" component={Leaderboard} />
-        <Route path="/admin/review" component={AdminReviewQueue} />
+        <Route path="/arena">
+          {() => <Leaderboard />}
+        </Route>
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

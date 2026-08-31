@@ -1,6 +1,6 @@
 import { eq, and, notExists } from "drizzle-orm";
 import { getDb } from "./db";
-import { decisionReceipts, receiptResolutions, marketSnapshots } from "../drizzle/schema";
+import { decisionReceipts, receiptResolutions, marketSnapshots, forecasts } from "../drizzle/schema";
 import { getDreamDexSnapshot, type DreamDexSnapshot } from "./dreamdex";
 import { hashResolutionEvidence } from "./receipts";
 
@@ -253,5 +253,85 @@ export async function pollAndResolveDreamDexReceipts(): Promise<AutomatedResolut
       checkedAt,
     };
   }
+}
+
+/**
+ * Priority 5: Automated Oracle Settlement Webhook Handler.
+ * Immediately resolves all open Decision Receipts on a market via UMA / Chainlink.
+ */
+export async function resolveMarketByOracle(
+  marketId: string,
+  outcome: "YES" | "NO" | "VOID",
+  oracleSource: string = "UMA_OPTIMISTIC_ORACLE_V3",
+  resolutionTxHash?: string
+): Promise<{ resolvedCount: number; receiptIds: number[] }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database connection unavailable");
+
+  const openReceipts = await db
+    .select({
+      receiptId: decisionReceipts.id,
+      userId: decisionReceipts.userId,
+      direction: forecasts.direction,
+      stakeAmountWei: decisionReceipts.stakeAmountWei,
+    })
+    .from(decisionReceipts)
+    .innerJoin(marketSnapshots, eq(decisionReceipts.marketSnapshotId, marketSnapshots.id))
+    .innerJoin(forecasts, eq(decisionReceipts.forecastId, forecasts.id))
+    .where(
+      and(
+        eq(marketSnapshots.marketId, marketId),
+        notExists(
+          db
+            .select({ id: receiptResolutions.id })
+            .from(receiptResolutions)
+            .where(
+              and(
+                eq(receiptResolutions.receiptId, decisionReceipts.id),
+                eq(receiptResolutions.verificationStatus, "VERIFIED")
+              )
+            )
+        )
+      )
+    );
+
+  const resolvedIds: number[] = [];
+  const sourceUrl = resolutionTxHash
+    ? `https://shannon-explorer.somnia.network/tx/${resolutionTxHash}`
+    : `https://oracle.somnia.network/resolve/${marketId}`;
+  const evidenceSummary = `Instant oracle settlement via ${oracleSource} for market ${marketId}. Winning outcome: ${outcome}. Tx: ${resolutionTxHash || "On-Chain Assertion"}`;
+  const evidenceHash = hashResolutionEvidence(outcome, sourceUrl, evidenceSummary);
+
+  for (const receipt of openReceipts) {
+    await db.insert(receiptResolutions).values({
+      receiptId: receipt.receiptId,
+      userId: receipt.userId,
+      outcome,
+      verificationStatus: "VERIFIED",
+      sourceUrl,
+      evidenceSummary,
+      evidenceHash,
+      hashAlgorithm: "SHA-256",
+      oracleSource,
+      reviewerNotes: `Verified via ${oracleSource} Webhook Integration`,
+      verifiedBy: oracleSource,
+      verifiedAt: new Date(),
+    });
+
+    // Settle stake if applicable
+    if (receipt.stakeAmountWei) {
+      const isWin =
+        (receipt.direction === "UP" && outcome === "YES") ||
+        (receipt.direction === "DOWN" && outcome === "NO");
+      const stakeStatus = outcome === "VOID" ? "REFUNDED" : isWin ? "WON" : "LOST";
+      await db.update(decisionReceipts).set({ stakeStatus }).where(eq(decisionReceipts.id, receipt.receiptId));
+    }
+
+    resolvedIds.push(receipt.receiptId);
+  }
+
+  diagnostics.totalResolvedCount += resolvedIds.length;
+  diagnostics.lastResolvedCount = resolvedIds.length;
+  return { resolvedCount: resolvedIds.length, receiptIds: resolvedIds };
 }
 

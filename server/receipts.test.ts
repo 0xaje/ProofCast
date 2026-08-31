@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import type { DreamDexMarketSnapshot, DreamDexSnapshot } from "./dreamdex";
 import { decisionReceipts, forecasts, marketSnapshots } from "../drizzle/schema";
-import { buildMarketSnapshotInsert, createDecisionReceipt, isVerifiedResolution, nextRevisionNumber, pickVerifiedOwnedResolution, preservesOriginalForecast, receiptBelongsToUser, resolutionBelongsToUser, revisionBelongsToUser, validateEvidenceSourceUrl, verifyResolutionEvidence, hashEvidenceCommitment, csvCell } from "./receipts";
+import { buildMarketSnapshotInsert, createDecisionReceipt, isVerifiedResolution, nextRevisionNumber, pickVerifiedOwnedResolution, preservesOriginalForecast, receiptBelongsToUser, resolutionBelongsToUser, revisionBelongsToUser, validateEvidenceSourceUrl, verifyResolutionEvidence, hashEvidenceCommitment, csvCell, verifyForecastReceiptSignature } from "./receipts";
 import { appRouter, receiptInputSchema, resolutionEvidenceInputSchema, revisionInputSchema } from "./routers";
 import { calculateCalibrationMetrics, scoreVerifiedOutcome, selectForecastAtResolution } from "./scoring";
+import { privateKeyToAccount } from "viem/accounts";
+import { PROOFCAST_EIP712_DOMAIN, PROOFCAST_EIP712_TYPES } from "../shared/eip712";
 
 const market: DreamDexMarketSnapshot = {
   marketId: "market-1",
@@ -159,7 +161,8 @@ describe("Decision Receipt revision and resolution safeguards", () => {
     expect(nextRevisionNumber([{ revisionNumber: 1 }, { revisionNumber: 3 }])).toBe(4);
     expect(isVerifiedResolution({ verificationStatus: "SUBMITTED" })).toBe(false);
     expect(isVerifiedResolution({ verificationStatus: "VERIFIED" })).toBe(true);
-    expect(pickVerifiedOwnedResolution(7, [{ userId: 8, verificationStatus: "VERIFIED", outcome: "YES" }, { userId: 7, verificationStatus: "VERIFIED", outcome: "NO" }])).toMatchObject({ userId: 7, outcome: "NO" });
+    const now = new Date();
+    expect(pickVerifiedOwnedResolution(7, [{ userId: 8, verificationStatus: "VERIFIED", outcome: "YES", createdAt: now, verifiedAt: now }, { userId: 7, verificationStatus: "VERIFIED", outcome: "NO", createdAt: now, verifiedAt: now }])).toMatchObject({ userId: 7, outcome: "NO" });
     expect(revisionBelongsToUser({ userId: 7 }, 7)).toBe(true);
     expect(revisionBelongsToUser({ userId: 7 }, 8)).toBe(false);
     expect(resolutionBelongsToUser({ userId: 7 }, 7)).toBe(true);
@@ -271,6 +274,101 @@ describe("Decision Receipt v1 protected procedures", () => {
     const caller = appRouter.createCaller(unauthenticatedContext());
     const leaderboard = await caller.receipts.leaderboard();
     expect(Array.isArray(leaderboard)).toBe(true);
+  });
+});
+
+describe("EIP-712 cryptographic forecast commitment verification", () => {
+  // Ephemeral test account for signing
+  const testAccount = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+  const timestamp = 1_700_000_000;
+
+  it("verifies a valid EIP-712 signature over a forecast commitment", async () => {
+    const validMessage = {
+      marketId: "market-1",
+      direction: "UP" as const,
+      probabilityBps: 6_500n,
+      confidence: "HIGH" as const,
+      thesis: "Strong on-chain liquidity supporting upside.",
+      counterThesis: "Order-book thinning could cause short-term slip.",
+      timestamp: BigInt(timestamp),
+    };
+
+    const signature = await testAccount.signTypedData({
+      domain: PROOFCAST_EIP712_DOMAIN,
+      types: PROOFCAST_EIP712_TYPES,
+      primaryType: "ForecastCommitment",
+      message: validMessage,
+    });
+
+    const isValid = await verifyForecastReceiptSignature(
+      {
+        marketId: validMessage.marketId,
+        direction: validMessage.direction,
+        probabilityBps: Number(validMessage.probabilityBps),
+        confidence: validMessage.confidence,
+        thesis: validMessage.thesis,
+        counterThesis: validMessage.counterThesis,
+        signerAddress: testAccount.address,
+        eip712Signature: signature,
+        commitmentTimestamp: timestamp,
+      },
+      timestamp
+    );
+
+    expect(isValid).toBe(true);
+  });
+
+  it("rejects an EIP-712 signature if commitment payload is tampered", async () => {
+    const validMessage = {
+      marketId: "market-1",
+      direction: "UP" as const,
+      probabilityBps: 6_500n,
+      confidence: "HIGH" as const,
+      thesis: "Strong on-chain liquidity supporting upside.",
+      counterThesis: "Order-book thinning could cause short-term slip.",
+      timestamp: BigInt(timestamp),
+    };
+
+    const signature = await testAccount.signTypedData({
+      domain: PROOFCAST_EIP712_DOMAIN,
+      types: PROOFCAST_EIP712_TYPES,
+      primaryType: "ForecastCommitment",
+      message: validMessage,
+    });
+
+    // Tamper with probability
+    const isTamperedProbability = await verifyForecastReceiptSignature(
+      {
+        marketId: validMessage.marketId,
+        direction: validMessage.direction,
+        probabilityBps: 7_500, // modified
+        confidence: validMessage.confidence,
+        thesis: validMessage.thesis,
+        counterThesis: validMessage.counterThesis,
+        signerAddress: testAccount.address,
+        eip712Signature: signature,
+        commitmentTimestamp: timestamp,
+      },
+      timestamp
+    );
+    expect(isTamperedProbability).toBe(false);
+
+    // Tamper with market ID
+    const isTamperedMarket = await verifyForecastReceiptSignature(
+      {
+        marketId: "tampered-market-id",
+        direction: validMessage.direction,
+        probabilityBps: Number(validMessage.probabilityBps),
+        confidence: validMessage.confidence,
+        thesis: validMessage.thesis,
+        counterThesis: validMessage.counterThesis,
+        signerAddress: testAccount.address,
+        eip712Signature: signature,
+        commitmentTimestamp: timestamp,
+      },
+      timestamp
+    );
+    expect(isTamperedMarket).toBe(false);
   });
 });
 

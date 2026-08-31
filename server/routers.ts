@@ -19,6 +19,8 @@ import {
 } from "./receipts";
 import { computeDeterministicModel } from "./eventforge/model";
 import { generateEventForgeReasoning } from "./eventforge/reasoning";
+import { runMultiModelAnalysis } from "./eventforge/models/registry";
+import { getModelArenaRankings, getHistoricalBenchmarkList } from "./eventforge/benchmark";
 import { evaluateMarketQuality } from "./marketQuality";
 import { calculateExecutableEdge } from "./executableEdge";
 import { pollAndResolveDreamDexReceipts, getResolutionWorkerDiagnostics } from "./resolutionWorker";
@@ -36,9 +38,24 @@ export const receiptInputSchema = z.object({
   tradeTxHash: z.string().trim().max(128).optional(),
   tradeOrderId: z.string().trim().max(64).optional(),
   tradeStatus: z.string().trim().max(32).optional(),
+  signerAddress: z.string().trim().max(64).optional(),
+  eip712Signature: z.string().trim().max(512).optional(),
+  commitmentTimestamp: z.number().int().positive().optional(),
+  stakeAmountWei: z.string().trim().max(64).optional(),
+  stakeTxHash: z.string().trim().max(128).optional(),
 });
 
-export const revisionInputSchema = receiptInputSchema.omit({ marketId: true, tradeTxHash: true, tradeOrderId: true, tradeStatus: true });
+export const revisionInputSchema = receiptInputSchema.omit({
+  marketId: true,
+  tradeTxHash: true,
+  tradeOrderId: true,
+  tradeStatus: true,
+  signerAddress: true,
+  eip712Signature: true,
+  commitmentTimestamp: true,
+  stakeAmountWei: true,
+  stakeTxHash: true,
+});
 
 export const resolutionEvidenceInputSchema = z.object({
   receiptId: z.number().int().positive(),
@@ -111,6 +128,47 @@ export const appRouter = router({
           quality,
         };
       }),
+
+    /** Multi-Model Intelligence Engine: Evaluates Gemini, DeepSeek, Claude, Deterministic, and Meta-Oracle */
+    analyzeMultiModel: publicProcedure
+      .input(z.object({ marketId: z.string().trim().min(1) }))
+      .query(async ({ input }) => {
+        const snapshot = await getDreamDexSnapshot(6);
+        const market = snapshot.markets.find(m => m.marketId === input.marketId);
+        if (!market) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Market not found in verified snapshot" });
+        }
+        const multiModel = await runMultiModelAnalysis(market);
+        const quality = evaluateMarketQuality(market);
+        return {
+          ...multiModel,
+          quality,
+        };
+      }),
+
+    /** AI Model Arena Leaderboard: Real-time Brier rankings and calibration curves */
+    arenaLeaderboard: publicProcedure.query(async () => {
+      try {
+        return getModelArenaRankings();
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Unable to load AI Arena rankings",
+        });
+      }
+    }),
+
+    /** Historical model benchmark records on resolved DreamDEX markets */
+    benchmarkHistory: publicProcedure.query(async () => {
+      try {
+        return getHistoricalBenchmarkList();
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Unable to load benchmark history",
+        });
+      }
+    }),
   }),
 
   marketQuality: router({

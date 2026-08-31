@@ -1,10 +1,6 @@
-import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowDownRight, ArrowUpRight, Check, CircleDotDashed, Coins, Fingerprint, GitCompareArrows, ScanLine, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Check, CircleDotDashed, Fingerprint, GitCompareArrows, ScanLine, ShieldCheck, Trophy } from "lucide-react";
 import { HeroInstrument } from "@/components/HeroInstrument";
-import { CustomConnectButton } from "@/components/CustomConnectButton";
-import { JudgeGuidedTour } from "@/components/JudgeGuidedTour";
-import { SomniaFaucetModal } from "@/components/SomniaFaucetModal";
 
 const proofSteps = [
   { number: "01", title: "Observe", detail: "Read live DreamDEX market signals, order book depth, and real-time spreads.", icon: ScanLine },
@@ -17,9 +13,6 @@ const proofSteps = [
 ];
 
 export default function Landing() {
-  const [tourOpen, setTourOpen] = useState(false);
-  const [faucetOpen, setFaucetOpen] = useState(false);
-
   return (
     <div className="proof-landing">
       <nav className="pl-nav">
@@ -31,15 +24,8 @@ export default function Landing() {
         </Link>
         <div className="pl-nav-links">
           <a href="#method">How It Works</a>
-          <button onClick={() => setTourOpen(true)} className="flex items-center gap-1 text-[#c8f06a] hover:underline">
-            <Sparkles size={13} /> 45s Tour
-          </button>
-          <button onClick={() => setFaucetOpen(true)} className="flex items-center gap-1 text-white/80 hover:text-white">
-            <Coins size={13} className="text-[#c8f06a]" /> Faucet
-          </button>
         </div>
         <div className="flex items-center gap-3">
-          <CustomConnectButton />
           <Link href="/signal" className="pl-nav-cta">
             Launch App <ArrowUpRight size={15} />
           </Link>
@@ -66,13 +52,9 @@ export default function Landing() {
               <Link href="/signal" className="pl-primary">
                 Launch App <ArrowUpRight size={18} />
               </Link>
-              <button
-                type="button"
-                onClick={() => setTourOpen(true)}
-                className="pl-secondary flex items-center gap-2 cursor-pointer"
-              >
-                <Sparkles size={15} className="text-[#c8f06a]" /> Start 45s Judge Tour
-              </button>
+              <Link href="/leaderboard" className="pl-secondary flex items-center gap-2">
+                <Trophy size={15} className="text-[#c8f06a]" /> Explore Leaderboard
+              </Link>
             </div>
             <div className="pl-proofline">
               <span>01</span>
@@ -256,12 +238,6 @@ export default function Landing() {
         <span>Prediction intelligence & cryptographic audit trail on Somnia.</span>
         <span>© 2026 Proofcast</span>
       </footer>
-
-      {/* Interactive Guided Tour Modal */}
-      <JudgeGuidedTour isOpen={tourOpen} onClose={() => setTourOpen(false)} />
-
-      {/* Somnia Faucet & Network Modal */}
-      <SomniaFaucetModal isOpen={faucetOpen} onClose={() => setFaucetOpen(false)} />
     </div>
   );
 }

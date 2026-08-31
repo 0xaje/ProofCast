@@ -13,7 +13,7 @@ export function HeroInstrument() {
   const question = market?.question ?? "Somnia DreamDEX Binary Event Contract";
 
   return (
-    <div className="relative w-full h-[520px] bg-[#121410] border border-[#151515] shadow-[16px_16px_0_#151515] p-6 flex flex-col justify-between overflow-hidden text-[#f8f6ef] font-sans selection:bg-[#c8f06a] selection:text-[#151515]">
+    <div className="relative w-full h-[480px] bg-[#121410] border border-[#151515] shadow-[16px_16px_0_#151515] p-6 flex flex-col justify-between overflow-hidden text-[#f8f6ef] font-sans selection:bg-[#c8f06a] selection:text-[#151515]">
       {/* Industrial blueprint grid overlay */}
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(200,240,106,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(200,240,106,0.035)_1px,transparent_1px)] [background-size:28px_28px]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_10%,rgba(240,75,47,0.08),transparent_40%)]" />
@@ -41,7 +41,7 @@ export function HeroInstrument() {
       </div>
 
       {/* Main Evidence Visualizer */}
-      <div className="relative z-10 space-y-4 my-auto">
+      <div className="relative z-10 space-y-3.5 my-auto">
         {/* Layer 1: Market Observation */}
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-md">
           <div className="flex items-center justify-between text-[10px] uppercase font-bold text-white/50 tracking-wider">

@@ -1,9 +1,20 @@
 import React, { createContext, useContext } from "react";
-import { useAccount, useChainId, useBalance, useSwitchChain, useDisconnect } from "wagmi";
+import { useAccount, useChainId, useBalance, useSwitchChain, useDisconnect, useSignTypedData } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { somniaShannonChain } from "@/lib/network";
+import { PROOFCAST_EIP712_DOMAIN, PROOFCAST_EIP712_TYPES } from "../../../shared/eip712";
 
 import { formatUnits } from "viem";
+
+export type SignForecastParams = {
+  marketId: string;
+  direction: "UP" | "DOWN";
+  probabilityBps: number;
+  confidence: "LOW" | "MEDIUM" | "HIGH";
+  thesis: string;
+  counterThesis: string;
+  timestamp: number;
+};
 
 interface WalletContextType {
   address: string | null;
@@ -15,6 +26,7 @@ interface WalletContextType {
   connect: () => Promise<void>;
   disconnect: () => void;
   switchNetwork: () => Promise<void>;
+  signForecastCommitment: (params: SignForecastParams) => Promise<string | null>;
 }
 
 const WalletContext = createContext<WalletContextType>({
@@ -27,6 +39,7 @@ const WalletContext = createContext<WalletContextType>({
   connect: async () => {},
   disconnect: () => {},
   switchNetwork: async () => {},
+  signForecastCommitment: async () => null,
 });
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
@@ -75,6 +88,32 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const { signTypedDataAsync } = useSignTypedData();
+
+  async function signForecastCommitment(params: SignForecastParams): Promise<string | null> {
+    if (!address || !isConnected) return null;
+    try {
+      const signature = await signTypedDataAsync({
+        domain: PROOFCAST_EIP712_DOMAIN,
+        types: PROOFCAST_EIP712_TYPES,
+        primaryType: "ForecastCommitment",
+        message: {
+          marketId: params.marketId,
+          direction: params.direction,
+          probabilityBps: BigInt(params.probabilityBps),
+          confidence: params.confidence,
+          thesis: params.thesis,
+          counterThesis: params.counterThesis,
+          timestamp: BigInt(params.timestamp),
+        },
+      });
+      return signature;
+    } catch (err) {
+      console.warn("User rejected or failed EIP-712 forecast signature:", err);
+      return null;
+    }
+  }
+
   return (
     <WalletContext.Provider
       value={{
@@ -87,6 +126,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         connect,
         disconnect,
         switchNetwork,
+        signForecastCommitment,
       }}
     >
       {children}

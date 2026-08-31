@@ -1,18 +1,17 @@
 /* Proofcast / Signal Room: shared persistent rail and utility bar; evidence-led navigation across every route. */
 import { Link, useLocation } from "wouter";
-import { Bell, Coins, Compass, FileCheck2, GitCompareArrows, Menu, Radio, RefreshCw, Sparkles, Trophy, X } from "lucide-react";
+import { Compass, FileCheck2, GitCompareArrows, Menu, Radio, RefreshCw, Trophy, X, Cpu } from "lucide-react";
 import { ReactNode, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { CustomConnectButton } from "@/components/CustomConnectButton";
 import { useWallet } from "@/contexts/WalletContext";
-import { JudgeGuidedTour } from "@/components/JudgeGuidedTour";
-import { SomniaFaucetModal } from "@/components/SomniaFaucetModal";
 
 const navItems = [
   { href: "/signal", label: "Signal room", icon: Compass },
   { href: "/market", label: "Market decision", icon: GitCompareArrows },
   { href: "/proof", label: "Proof profile", icon: FileCheck2 },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  { href: "/arena", label: "AI Model Arena", icon: Cpu },
 ];
 
 export function StatusChip({ children, tone = "snapshot" }: { children: ReactNode; tone?: "live" | "snapshot" | "unavailable" | "watch" }) {
@@ -52,7 +51,7 @@ function liveLabel(state: "LIVE" | "STALE" | "UNAVAILABLE" | "ERROR" | undefined
   return "Live data unavailable";
 }
 
-function RailContent({ onNavigate, onOpenTour, onOpenFaucet }: { onNavigate?: () => void; onOpenTour?: () => void; onOpenFaucet?: () => void }) {
+function RailContent({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
   const snapshot = trpc.dreamdex.snapshot.useQuery(undefined, { refetchInterval: 15_000, retry: 1 });
   const { address, isConnected } = useWallet();
@@ -62,19 +61,13 @@ function RailContent({ onNavigate, onOpenTour, onOpenFaucet }: { onNavigate?: ()
   return <>
     <Link href="/" onClick={onNavigate} className="flex items-center gap-3 px-5 py-6"><img src="/manus-storage/proofcast-mark_6cbda10a.png" alt="Proofcast proof seal" className="h-9 w-9 rounded-xl border border-[#d7f36b]/25 bg-[#d7f36b]/10 shadow-[0_0_20px_rgba(215,243,107,0.15)]" /><div><div className="font-display text-[18px] font-semibold tracking-[-0.07em] text-white">proof<span className="text-[#d7f36b]">cast</span></div><div className="text-[9px] uppercase tracking-[0.22em] text-[#6f7b8f]">Proof instrument / 01</div></div></Link>
     <div className="px-4 pt-8"><div className="px-3 pb-3 text-[9px] font-bold uppercase tracking-[0.22em] text-[#697487]">Evidence workspace</div><nav className="space-y-1">{navItems.map(({ href, label, icon: Icon }) => { const active = location.startsWith(href); return <Link key={href} href={href} onClick={onNavigate} className={`flex items-center justify-between rounded-xl px-3 py-3 text-[12px] transition-all duration-200 ${active ? "bg-white/[0.08] text-white shadow-[inset_0_0_1px_rgba(255,255,255,0.03)] border-l-2 border-[#d7f36b]" : "text-[#8b96a8] hover:bg-white/[0.04] hover:text-white"}`}><span className="flex items-center gap-3"><Icon size={16} className={active ? "text-[#d7f36b]" : "text-[#687387]"} />{label}</span>{active && <span className="text-[#d7f36b]">›</span>}</Link>; })}</nav>
-    <div className="mt-4 space-y-1.5 px-1">
-      <button onClick={onOpenTour} className="flex w-full items-center gap-2 rounded-xl border border-[#c8f06a]/20 bg-[#c8f06a]/5 px-3 py-2.5 text-[11px] font-bold text-[#c8f06a] transition hover:bg-[#c8f06a]/15 text-left"><Sparkles size={14} /> 45s Guided Tour</button>
-      <button onClick={onOpenFaucet} className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-bold text-white transition hover:bg-white/10 text-left"><Coins size={13} className="text-[#c8f06a]" /> Somnia Faucet & Config</button>
-    </div>
-    <div className="mx-3 mt-5 border-l-2 border-[#d7f36b] pl-3 text-[10px] leading-4 text-[#8993a4]">Market signal, forecast commitment, and proof receipt stay deliberately separate.</div></div>
+    <div className="mx-3 mt-6 border-l-2 border-[#d7f36b] pl-3 text-[10px] leading-4 text-[#8993a4]">Market signal, forecast commitment, and proof receipt stay deliberately separate.</div></div>
     <div className="mt-auto p-4"><div className="rounded-2xl border border-[#d7f36b]/15 bg-[#d7f36b]/[0.035] p-4"><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.17em] text-[#d7f36b]"><Radio size={13} /> Connection</div><div className="mt-3 flex items-center justify-between gap-3"><div className="text-[12px] font-medium text-white">{liveLabel(connectionState)}</div><StatusChip tone={statusTone(connectionState)}>{connectionState ?? "checking"}</StatusChip></div><div className="mt-2 text-[11px] leading-5 text-[#8993a4]">{connectionMessage ?? "Checking the verified DreamDEX Event Contract source."}</div><button onClick={() => snapshot.refetch()} disabled={snapshot.isFetching} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#d7f36b] py-2.5 text-[11px] font-bold text-[#10140d] disabled:cursor-wait disabled:opacity-55"><RefreshCw size={14} className={snapshot.isFetching ? "animate-spin" : ""} /> {snapshot.isFetching ? "Verifying source" : connectionState === "ERROR" ? "Retry verified source" : "Refresh verified data"}</button></div><div className="mt-4 flex items-center gap-3 border-t border-white/[0.07] pt-4"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#202937] text-[10px] font-bold text-[#d7f36b] border border-[#d7f36b]/30">AO</div><div><div className="text-[11px] font-semibold text-white">{isConnected ? "Web3 Wallet Connected" : "Operator workspace"}</div><div className="text-[10px] text-[#677285] font-mono">{isConnected && address ? `${address.slice(0, 8)}…` : "Non-custodial proof layer"}</div></div></div></div>
   </>;
 }
 
 export function SignalShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [tourOpen, setTourOpen] = useState(false);
-  const [faucetOpen, setFaucetOpen] = useState(false);
   const [resolutionStatusMsg, setResolutionStatusMsg] = useState<string | null>(null);
   const snapshot = trpc.dreamdex.snapshot.useQuery(undefined, { refetchInterval: 15_000, retry: 1 });
   const utils = trpc.useUtils();
@@ -103,7 +96,7 @@ export function SignalShell({ children }: { children: ReactNode }) {
     <div className="pc-shell min-h-screen bg-[#080b10] text-[#f5f6f2] selection:bg-[#d7f36b] selection:text-[#10140d]">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_78%_0%,rgba(45,68,133,0.16),transparent_28%),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] [background-size:auto,72px_100%]" />
       <aside className="fixed inset-y-0 z-40 flex w-[248px] flex-col border-r border-white/[0.07] bg-[#0a0e14]/96 shadow-[18px_0_60px_rgba(0,0,0,0.22)] backdrop-blur-xl max-lg:hidden">
-        <RailContent onOpenTour={() => setTourOpen(true)} onOpenFaucet={() => setFaucetOpen(true)} />
+        <RailContent />
       </aside>
       {mobileOpen && (
         <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm lg:hidden">
@@ -113,7 +106,7 @@ export function SignalShell({ children }: { children: ReactNode }) {
                 <X size={16} />
               </button>
             </div>
-            <RailContent onNavigate={() => setMobileOpen(false)} onOpenTour={() => { setMobileOpen(false); setTourOpen(true); }} onOpenFaucet={() => { setMobileOpen(false); setFaucetOpen(true); }} />
+            <RailContent onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}
@@ -129,38 +122,9 @@ export function SignalShell({ children }: { children: ReactNode }) {
               <span className={`h-2 w-2 rounded-full ${connectionState === "LIVE" ? "animate-pulse bg-[#d7f36b]" : "bg-[#e9b65b]"}`} /> DreamDEX mainnet / {connectionState ?? "checking"}
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Quick Tour & Faucet Header Pills */}
-            <button
-              onClick={() => setTourOpen(true)}
-              className="hidden md:flex items-center gap-1.5 rounded-lg border border-[#c8f06a]/30 bg-[#c8f06a]/10 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c8f06a] transition hover:bg-[#c8f06a]/20"
-            >
-              <Sparkles size={12} /> 45s Tour
-            </button>
-
-            <button
-              onClick={() => setFaucetOpen(true)}
-              className="hidden lg:flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
-            >
-              <Coins size={12} className="text-[#c8f06a]" /> Faucet
-            </button>
-
-            {/* Manual Check Resolution Button for Judges & Operators */}
-            <button
-              onClick={() => autoResolveMutation.mutate()}
-              disabled={autoResolveMutation.isPending}
-              title="Poll DreamDEX on-chain resolution contracts and compute Brier scores"
-              className="hidden sm:flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white transition hover:border-[#c8f06a]/40 hover:text-[#c8f06a] disabled:opacity-50"
-            >
-              <RefreshCw size={12} className={autoResolveMutation.isPending ? "animate-spin" : ""} />
-              {autoResolveMutation.isPending ? "Resolving…" : "Check Resolution"}
-            </button>
-
+          <div className="flex items-center gap-3">
             <CustomConnectButton />
-            <button aria-label="Notifications" className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] text-[#8490a3] hover:text-white">
-              <Bell size={15} />
-            </button>
-            <button aria-label="Open navigation" onClick={() => setMobileOpen(true)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] text-[#8490a3] lg:hidden">
+            <button aria-label="Open navigation" onClick={() => setMobileOpen(true)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] text-[#8490a3] hover:text-white transition cursor-pointer lg:hidden">
               <Menu size={16} />
             </button>
           </div>
@@ -175,12 +139,6 @@ export function SignalShell({ children }: { children: ReactNode }) {
         )}
 
         <main className="mx-auto max-w-[1480px] px-5 py-8 sm:px-8 lg:px-12 lg:py-12">{children}</main>
-
-        {/* Interactive Guided Tour Modal */}
-        <JudgeGuidedTour isOpen={tourOpen} onClose={() => setTourOpen(false)} />
-
-        {/* Somnia Faucet & Network Modal */}
-        <SomniaFaucetModal isOpen={faucetOpen} onClose={() => setFaucetOpen(false)} />
       </div>
     </div>
   );

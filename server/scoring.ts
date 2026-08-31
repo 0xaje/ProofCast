@@ -52,6 +52,15 @@ export type CalibrationBin = {
   observedBps: number;
 };
 
+export type ForecasterBadgeTier = "UNRANKED" | "BRONZE" | "SILVER" | "GOLD_MASTER";
+
+export type BadgeDetails = {
+  tier: ForecasterBadgeTier;
+  tierCode: number; // 0, 1, 2, 3
+  title: string;
+  description: string;
+};
+
 export type CalibrationMetrics = {
   verifiedCount: number;
   excludedCount: number;
@@ -60,10 +69,66 @@ export type CalibrationMetrics = {
   meanTimeWeightedBrierBps?: number | null;
   earlyPredictionBonusPct?: number | null;
   calibrationStatus: "READY" | "INSUFFICIENT_SAMPLE";
+  badge: BadgeDetails;
   minimumSampleSize: number;
   trend: CalibrationTrendPoint[];
   bins: CalibrationBin[];
 };
+
+export function determineForecasterBadge(
+  verifiedCount: number,
+  meanBrierScoreBps: number | null,
+  directionalAccuracyPct: number | null
+): BadgeDetails {
+  if (
+    verifiedCount >= 30 &&
+    meanBrierScoreBps !== null &&
+    meanBrierScoreBps <= 1200 &&
+    directionalAccuracyPct !== null &&
+    directionalAccuracyPct >= 70
+  ) {
+    return {
+      tier: "GOLD_MASTER",
+      tierCode: 3,
+      title: "Gold Master Oracle",
+      description: "≥30 verified proofs, Brier ≤0.12, Accuracy ≥70%",
+    };
+  }
+  if (
+    verifiedCount >= 15 &&
+    meanBrierScoreBps !== null &&
+    meanBrierScoreBps <= 1800 &&
+    directionalAccuracyPct !== null &&
+    directionalAccuracyPct >= 60
+  ) {
+    return {
+      tier: "SILVER",
+      tierCode: 2,
+      title: "Silver Superforecaster",
+      description: "≥15 verified proofs, Brier ≤0.18, Accuracy ≥60%",
+    };
+  }
+  if (
+    verifiedCount >= 5 &&
+    meanBrierScoreBps !== null &&
+    meanBrierScoreBps <= 2500 &&
+    directionalAccuracyPct !== null &&
+    directionalAccuracyPct >= 50
+  ) {
+    return {
+      tier: "BRONZE",
+      tierCode: 1,
+      title: "Bronze Forecaster",
+      description: "≥5 verified proofs, Brier ≤0.25, Accuracy ≥50%",
+    };
+  }
+  return {
+    tier: "UNRANKED",
+    tierCode: 0,
+    title: "Unranked Apprentice",
+    description: "Requires ≥5 verified proofs to establish on-chain calibration",
+  };
+}
 
 /**
  * Calculates lead time weight:
@@ -149,12 +214,14 @@ export function calculateCalibrationMetrics(scored: ScoredReceipt[], excludedCou
       )
     : null;
 
+  const directionalAccuracyPct = scored.length
+    ? Math.round((scored.filter((item) => item.directionalCorrect).length / scored.length) * 10_000) / 100
+    : null;
+
   return {
     verifiedCount: scored.length,
     excludedCount,
-    directionalAccuracyPct: scored.length
-      ? Math.round((scored.filter((item) => item.directionalCorrect).length / scored.length) * 10_000) / 100
-      : null,
+    directionalAccuracyPct,
     meanBrierScoreBps: meanBrier,
     meanTimeWeightedBrierBps: meanTimeWeighted,
     earlyPredictionBonusPct:
@@ -162,6 +229,7 @@ export function calculateCalibrationMetrics(scored: ScoredReceipt[], excludedCou
         ? Math.max(0, Math.round(((meanBrier - meanTimeWeighted) / meanBrier) * 10_000) / 100)
         : 0,
     calibrationStatus: scored.length >= CALIBRATION_MINIMUM_SAMPLE ? "READY" : "INSUFFICIENT_SAMPLE",
+    badge: determineForecasterBadge(scored.length, meanBrier, directionalAccuracyPct),
     minimumSampleSize: CALIBRATION_MINIMUM_SAMPLE,
     trend,
     bins: bins.map((bin) => ({
