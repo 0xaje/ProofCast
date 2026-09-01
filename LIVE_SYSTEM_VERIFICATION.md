@@ -1,6 +1,7 @@
 # ProofCast — Post-Build Reality Audit & Live System Verification
 
 **Date:** 27 August 2026  
+**Live Web Application:** [https://proofcast.onrender.com](https://proofcast.onrender.com)  
 **Network Target:** Somnia Shannon Testnet (Chain ID `50312`) / Somnia Mainnet  
 **Architecture Status:** Feature-frozen, validated end-to-end. Zero synthetic mock data or private key custody.
 

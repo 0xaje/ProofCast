@@ -5,6 +5,7 @@
 
 **The forecasting intelligence & cryptographic accountability layer built natively for Somnia DreamDEX Event Contracts.**
 
+[![Live App](https://img.shields.io/badge/Live_App-proofcast.onrender.com-c8f06a?style=for-the-badge&logo=render&logoColor=080b10)](https://proofcast.onrender.com)
 [![Somnia Network](https://img.shields.io/badge/Network-Somnia_Shannon_Testnet-c8f06a?style=for-the-badge&logo=ethereum&logoColor=080b10)](https://shannon-explorer.somnia.network)
 [![Smart Contract](https://img.shields.io/badge/Solidity-0.8.20_Verified-f04b2f?style=for-the-badge&logo=solidity&logoColor=white)](contracts/ProofCastAnchor.sol)
 [![DreamDEX](https://img.shields.io/badge/DEX-DreamDEX_Event_Contracts-38bdf8?style=for-the-badge&logo=polkadot&logoColor=white)](https://docs.dreamdex.io)
