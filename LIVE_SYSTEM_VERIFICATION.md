@@ -19,7 +19,7 @@
 | 7 | **Decision Receipt Creation** | ✅ | ✅ | ✅ | ✅ | [server/receipts.ts](file:///home/oyeolorun/ProofCast/server/receipts.ts), `receipts.test.ts` | Requires authenticated user and active `TRADING` market. |
 | 8 | **SHA-256 Evidence Integrity** | ✅ | ✅ | ✅ | ✅ | `hashEvidenceCommitment` in `receipts.ts` | 32-byte cryptographic digest of evidence URL, outcome, and summary. |
 | 9 | **Immutable Revision History** | ✅ | ✅ | ✅ | ✅ | `forecastRevisions` table & `createForecastRevision` | Original forecast row is never overwritten; chained via parent IDs. |
-| 10 | **Somnia On-Chain Anchoring** | ✅ | ✅ | ✅ | ✅ | [contracts/ProofCastAnchor.sol](file:///home/oyeolorun/ProofCast/contracts/ProofCastAnchor.sol) | Anchors `receiptHash`, `marketId`, `timestamp`, and `owner`. |
+| 10 | **Somnia On-Chain Anchoring** | ✅ | ✅ | ✅ | ✅ | [`ProofCastAnchor.sol`](contracts/ProofCastAnchor.sol) deployed at [`0xe7da3a86ab86c3b5a09c992367083f1cec62d18e`](https://shannon-explorer.somnia.network/address/0xe7da3a86ab86c3b5a09c992367083f1cec62d18e) | Anchors `receiptHash`, `marketId`, `timestamp`, and `owner`. |
 | 11 | **Explorer Tx Verification** | ✅ | ✅ | ✅ | ✅ | `https://shannon-explorer.somnia.network/tx/...` | Direct clickable badges in Proof Profile. |
 | 12 | **Automated DreamDEX Resolution Detection** | ✅ | ✅ | ✅ | ✅ | [server/resolutionWorker.ts](file:///home/oyeolorun/ProofCast/server/resolutionWorker.ts) | Queries Somnia indexer / on-chain status for `Resolved`/`Voided` events. |
 | 13 | **Automatic Receipt Resolution** | ✅ | ✅ | ✅ | ✅ | `pollAndResolveDreamDexReceipts` | Transitions open receipts to `VERIFIED` without manual admin bottleneck. |

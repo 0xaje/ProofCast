@@ -16,7 +16,7 @@ export const SOMNIA_SHANNON_TESTNET = {
 
 export const PROOFCAST_ANCHOR_CONTRACT =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_SOMNIA_ANCHOR_CONTRACT) ||
-  "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+  "0xe7da3a86ab86c3b5a09c992367083f1cec62d18e";
 
 export const PROOFCAST_ANCHOR_ABI = [
   {

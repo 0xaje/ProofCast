@@ -49,7 +49,7 @@ export async function handleEventForgeStream(req: Request, res: Response): Promi
 
     const reasoning = await generateEventForgeReasoning(market, model);
 
-    // Stream reasoning in chunks to simulate responsive LLM token generation
+    // Stream reasoning in chunks for progressive real-time delivery
     const sections = [
       { key: "bullCase", title: "BULL THESIS", content: reasoning.bullCase },
       { key: "bearCase", title: "BEAR CASE", content: reasoning.bearCase },

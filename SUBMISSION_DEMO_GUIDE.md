@@ -2,6 +2,7 @@
 
 **Project Name:** ProofCast  
 **Category:** Somnia Ecosystem / DreamDEX Event Contracts / AI & Accountability  
+**Deployed Contract (Somnia Shannon):** [`0xe7da3a86ab86c3b5a09c992367083f1cec62d18e`](https://shannon-explorer.somnia.network/address/0xe7da3a86ab86c3b5a09c992367083f1cec62d18e)  
 **Core Thesis:** *Predictions are cheap. Proof is not.*
 
 ---
