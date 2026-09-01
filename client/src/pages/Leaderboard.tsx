@@ -1,6 +1,6 @@
 /* Proof Instrument / Global Leaderboard & AI Model Arena: verifiable forecasting calibration rankings across human forecasters and AI models. */
 import * as React from "react";
-import { Link, useSearch } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -71,11 +71,20 @@ function renderBadge(badge: LeaderboardBadge) {
 }
 
 export default function Leaderboard() {
+  const [location] = useLocation();
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
-  const initialTab = searchParams.get("tab") === "arena" ? "ARENA" : "HUMANS";
+  const isArenaRoute = location.includes("arena") || searchParams.get("tab") === "arena";
+  const initialTab = isArenaRoute ? "ARENA" : "HUMANS";
 
   const [activeTab, setActiveTab] = React.useState<"HUMANS" | "ARENA">(initialTab);
+
+  React.useEffect(() => {
+    if (location.includes("arena")) {
+      setActiveTab("ARENA");
+    }
+  }, [location]);
+
   const [filter, setFilter] = React.useState<"ALL" | "PROVEN" | "ANCHORED">("ALL");
 
   const leaderboardQuery = trpc.receipts.leaderboard.useQuery(undefined, {
