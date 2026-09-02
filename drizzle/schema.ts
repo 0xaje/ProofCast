@@ -86,6 +86,13 @@ export const decisionReceipts = mysqlTable(
     forecastId: int("forecastId").notNull().references(() => forecasts.id),
     marketSnapshotId: int("marketSnapshotId").notNull().references(() => marketSnapshots.id),
     version: int("version").default(1).notNull(),
+    /**
+     * SHA-256 digest of the frozen forecast commitment, computed server-side at
+     * commit time and stored as a 0x-prefixed 32-byte hex string. This is the
+     * value anchored on Somnia: it exists before the outcome is known, so the
+     * anchor proves what was believed prior to settlement.
+     */
+    commitmentHash: varchar("commitmentHash", { length: 66 }),
     modelProbabilityBps: int("modelProbabilityBps"),
     modelConfidence: varchar("modelConfidence", { length: 32 }),
     marketQuality: varchar("marketQuality", { length: 32 }),

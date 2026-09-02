@@ -642,10 +642,13 @@ export default function MarketDecision() {
                               <div className="rounded-lg bg-white/5 p-2.5 space-y-1.5">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[#c8f06a] text-[10px] uppercase font-bold flex items-center gap-1">
-                                    💰 Stake $SOM (Optional Conviction Pool)
+                                    💰 Stake STT (Optional Conviction Pool)
                                   </span>
-                                  <span className="text-white text-xs font-mono font-bold">{stakeAmount} SOM</span>
+                                  <span className="text-white text-xs font-mono font-bold">{stakeAmount} STT</span>
                                 </div>
+                                <p className="text-[10px] leading-snug text-[#8b96a8]">
+                                  Transferred on-chain when you anchor this receipt on Somnia — not at commit.
+                                </p>
                                 <div className="grid grid-cols-4 gap-1.5">
                                   {[0, 1, 5, 25].map((amt) => (
                                     <button
@@ -681,7 +684,7 @@ export default function MarketDecision() {
                               {commitReceipt.isPending
                                 ? "Hashing & Committing…"
                                 : stakeAmount > 0
-                                ? `Freeze & Stake ${stakeAmount} SOM`
+                                ? `Freeze & Commit (${stakeAmount} STT at anchor)`
                                 : "Freeze & Commit SHA-256 Receipt"}
                             </button>
                             <button

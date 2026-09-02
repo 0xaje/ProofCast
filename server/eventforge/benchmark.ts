@@ -1,7 +1,20 @@
 import { MODEL_SPECS } from "./models/registry";
 import type { ModelArenaRanking, ModelId } from "./models/types";
 
-// Seeded verifiable benchmark baseline records on historical DreamDEX Event Contracts
+// SYNTHETIC BENCHMARK FIXTURE — NOT LIVE DATA.
+//
+// The entries below are hand-authored illustrative scenarios used to demonstrate
+// the Brier-ranking mechanism before enough real forecasts have resolved. Their
+// market ids, questions, outcomes and per-model predictions are invented; they do
+// NOT correspond to real DreamDEX Event Contracts and must never be presented as
+// empirical model performance. Every surface rendering this data is required to
+// show SYNTHETIC_BENCHMARK_NOTICE.
+//
+// Replace with a query over resolved decision receipts once live model forecasts
+// have accumulated.
+export const SYNTHETIC_BENCHMARK_NOTICE =
+  "Demonstration fixture — illustrative scenarios, not resolved DreamDEX contracts. These rankings show how the scoring mechanism works, not measured model performance.";
+
 interface HistoricalBenchmarkEntry {
   marketId: string;
   question: string;

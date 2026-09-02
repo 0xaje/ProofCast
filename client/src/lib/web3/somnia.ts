@@ -31,6 +31,16 @@ export const PROOFCAST_ANCHOR_ABI = [
   },
   {
     type: "function",
+    name: "anchorReceiptWithStake",
+    inputs: [
+      { name: "receiptHash", type: "bytes32" },
+      { name: "marketId", type: "string" },
+    ],
+    outputs: [],
+    stateMutability: "payable",
+  },
+  {
+    type: "function",
     name: "verifyAnchor",
     inputs: [{ name: "receiptHash", type: "bytes32" }],
     outputs: [
@@ -102,10 +112,18 @@ export async function switchOrAddSomniaShannon(): Promise<void> {
   }
 }
 
+/**
+ * Anchors a receipt hash on Somnia. When `stakeWei` is greater than zero the
+ * payable `anchorReceiptWithStake` entrypoint is used and the stake is actually
+ * transferred with the transaction; the server independently re-reads the mined
+ * transaction and only credits a stake it can confirm on-chain.
+ */
 export async function anchorReceiptToSomniaChain(
   receiptHash: string,
   marketId: string,
-): Promise<{ txHash: string; callerAddress: string }> {
+  stakeWei: bigint = 0n,
+): Promise<{ txHash: string; callerAddress: string; stakeWei: string }> {
+  if (stakeWei < 0n) throw new Error("Stake amount cannot be negative.");
   const address = await connectBrowserWallet();
   await switchOrAddSomniaShannon();
 
@@ -118,10 +136,12 @@ export async function anchorReceiptToSomniaChain(
     throw new Error(`Invalid 32-byte receipt hash format (expected 66 characters with 0x prefix, got ${formattedHash.length})`);
   }
 
-  // Encode anchorReceipt(bytes32,string) function call data
+  const isStaking = stakeWei > 0n;
+
+  // Encode anchorReceipt(bytes32,string) / anchorReceiptWithStake(bytes32,string)
   const calldata = encodeFunctionData({
     abi: PROOFCAST_ANCHOR_ABI,
-    functionName: "anchorReceipt",
+    functionName: isStaking ? "anchorReceiptWithStake" : "anchorReceipt",
     args: [formattedHash as `0x${string}`, marketId || "SOMNIA_EVENT_MARKET"],
   });
 
@@ -134,11 +154,12 @@ export async function anchorReceiptToSomniaChain(
           from: address,
           to: PROOFCAST_ANCHOR_CONTRACT,
           data: calldata,
+          ...(isStaking ? { value: `0x${stakeWei.toString(16)}` } : {}),
         },
       ],
     })) as string;
 
-    return { txHash, callerAddress: address };
+    return { txHash, callerAddress: address, stakeWei: stakeWei.toString() };
   } catch (err: any) {
     throw new Error(translateWeb3Error(err));
   }
