@@ -50,11 +50,16 @@ async function startServer() {
       const customSecret = req.headers["x-oracle-secret"];
       const configuredSecret = process.env.ORACLE_WEBHOOK_SECRET;
 
-      if (configuredSecret) {
-        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : customSecret;
-        if (token !== configuredSecret) {
-          return res.status(401).json({ error: "Unauthorized oracle webhook signature" });
-        }
+      // Fail closed: an unconfigured secret disables the endpoint entirely rather
+      // than leaving market settlement open to anonymous callers.
+      if (!configuredSecret) {
+        console.warn("[Oracle Webhook] Rejected call: ORACLE_WEBHOOK_SECRET is not configured");
+        return res.status(503).json({ error: "Oracle webhook is disabled: ORACLE_WEBHOOK_SECRET is not configured" });
+      }
+
+      const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : customSecret;
+      if (token !== configuredSecret) {
+        return res.status(401).json({ error: "Unauthorized oracle webhook signature" });
       }
 
       const { marketId, outcome, oracleSource, resolutionTxHash } = req.body;

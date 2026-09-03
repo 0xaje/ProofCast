@@ -41,6 +41,22 @@ export interface AutomatedResolutionResult {
 }
 
 /**
+ * Maps a settled binary pool's last price to an outcome.
+ *
+ * A settled DreamDEX binary contract prints at >= 99% (YES won) or <= 1% (NO won).
+ * Any price between those bounds means the market expired without a conclusive
+ * settlement print, which is NOT an outcome — it is recorded as VOID and excluded
+ * from calibration scoring. Guessing a winner here would silently corrupt every
+ * Brier score derived from it.
+ */
+export function mapSettlementOutcome(lastPricePercent: number | null): "YES" | "NO" | "VOID" {
+  if (lastPricePercent === null) return "VOID";
+  if (lastPricePercent >= 99) return "YES";
+  if (lastPricePercent <= 1) return "NO";
+  return "VOID";
+}
+
+/**
  * Fetch DreamDEX snapshot with retry logic and exponential backoff.
  */
 async function fetchSnapshotWithRetry(retries = 3, baseDelayMs = 500): Promise<DreamDexSnapshot | null> {
@@ -193,14 +209,13 @@ export async function pollAndResolveDreamDexReceipts(): Promise<AutomatedResolut
             continue;
           }
 
-          // Deterministic on-chain resolution mapping:
-          // In binary pools, if lastPrice is >= 99% (10,000 bps) YES won, if <= 1% NO won.
-          const isYesWin = liveMarket.lastPricePercent !== null && liveMarket.lastPricePercent >= 99;
-          const isNoWin = liveMarket.lastPricePercent !== null && liveMarket.lastPricePercent <= 1;
-          const outcome: "YES" | "NO" | "VOID" = isYesWin ? "YES" : isNoWin ? "NO" : "YES";
+          const outcome = mapSettlementOutcome(liveMarket.lastPricePercent);
 
           const sourceUrl = `https://prd.smk.somnia.host/v1/graphql#market-${receipt.marketId}`;
-          const evidenceSummary = `Automated resolution from Somnia DreamDEX on-chain event contract settlement for market ${receipt.marketId}. Expiry: ${new Date(liveMarket.expiry).toISOString()}.`;
+          const settlementBasis = outcome === "VOID"
+            ? `Market expired without a conclusive settlement print (last price ${liveMarket.lastPricePercent ?? "unavailable"}%); recorded VOID and excluded from calibration scoring.`
+            : `Settlement print of ${liveMarket.lastPricePercent}% resolves the binary contract to ${outcome}.`;
+          const evidenceSummary = `Automated resolution from Somnia DreamDEX on-chain event contract settlement for market ${receipt.marketId}. Expiry: ${new Date(liveMarket.expiry).toISOString()}. ${settlementBasis}`;
           const evidenceHash = hashResolutionEvidence(outcome, sourceUrl, evidenceSummary);
 
           await db.insert(receiptResolutions).values({
@@ -274,6 +289,7 @@ export async function resolveMarketByOracle(
       userId: decisionReceipts.userId,
       direction: forecasts.direction,
       stakeAmountWei: decisionReceipts.stakeAmountWei,
+      stakeStatus: decisionReceipts.stakeStatus,
     })
     .from(decisionReceipts)
     .innerJoin(marketSnapshots, eq(decisionReceipts.marketSnapshotId, marketSnapshots.id))
@@ -318,8 +334,9 @@ export async function resolveMarketByOracle(
       verifiedAt: new Date(),
     });
 
-    // Settle stake if applicable
-    if (receipt.stakeAmountWei) {
+    // Settle only stakes confirmed on-chain. An intended-but-unpaid amount
+    // stays at NONE and must never be settled as if it were real money.
+    if (receipt.stakeStatus === "STAKED" && receipt.stakeAmountWei) {
       const isWin =
         (receipt.direction === "UP" && outcome === "YES") ||
         (receipt.direction === "DOWN" && outcome === "NO");

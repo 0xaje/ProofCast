@@ -124,22 +124,35 @@ export default function ProofProfile() {
     setAnchorMessage("1/3 Packing cryptographic proof payload for Somnia Shannon L1…");
     const toastId = toast.loading("1/3 Packing cryptographic proof payload…");
     try {
-      const receiptHash =
-        selectedReceipt.resolutions[0]?.evidenceHash ||
-        "0x" +
-          Array.from(new TextEncoder().encode(`PROOFCAST_RECEIPT_${selectedReceipt.id}_${selectedReceipt.createdAt}`))
-            .map(b => b.toString(16).padStart(2, "0"))
-            .slice(0, 32)
-            .join("")
-            .padEnd(64, "0");
+      // Anchor the commitment digest frozen at commit time. It exists before the
+      // outcome is known, so the anchor proves what was believed prior to
+      // settlement — which the post-resolution evidence hash cannot do.
+      const receiptHash = selectedReceipt.commitmentHash;
+      if (!receiptHash) {
+        throw new Error(
+          "This receipt predates commitment hashing and has no pre-settlement digest to anchor. Commit a new forecast to anchor it.",
+        );
+      }
       const marketId = selectedReceipt.marketSnapshot.marketId;
 
-      setAnchorMessage("2/3 Prompting wallet signature (check MetaMask/Rainbow)…");
+      // The amount chosen at commit time is an intention until it is actually
+      // paid. Carry it as the transaction value here; the server credits the
+      // stake only after re-reading the mined transaction from Somnia.
+      const intendedStakeWei = selectedReceipt.stakeAmountWei
+        ? BigInt(selectedReceipt.stakeAmountWei)
+        : 0n;
+
+      setAnchorMessage(
+        intendedStakeWei > 0n
+          ? "2/3 Prompting wallet to anchor and transfer stake (check MetaMask/Rainbow)…"
+          : "2/3 Prompting wallet signature (check MetaMask/Rainbow)…",
+      );
       toast.loading("2/3 Prompting wallet signature…", { id: toastId });
 
       const { txHash, callerAddress } = await anchorReceiptToSomniaChain(
         receiptHash,
         marketId,
+        intendedStakeWei,
       );
 
       setAnchorMessage("3/3 Broadcasting anchor transaction to Somnia Shannon L1…");

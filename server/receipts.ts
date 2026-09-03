@@ -20,6 +20,7 @@ import type { DreamDexMarketSnapshot, DreamDexSnapshot } from "./dreamdex";
 import { verifyTypedData } from "viem";
 import { PROOFCAST_EIP712_DOMAIN, PROOFCAST_EIP712_TYPES } from "../shared/eip712";
 import { getDb } from "./db";
+import { verifyAnchorTransaction } from "./somniaAnchor";
 import { calculateCalibrationMetrics, scoreVerifiedOutcome, selectForecastAtResolution } from "./scoring";
 import { computeDeterministicModel } from "./eventforge/model";
 import { evaluateMarketQuality } from "./marketQuality";
@@ -53,6 +54,51 @@ export function hashEvidenceCommitment(outcome: ResolutionEvidenceInput["outcome
 }
 
 export const hashResolutionEvidence = hashEvidenceCommitment;
+
+export type ForecastCommitmentDigestInput = {
+  marketId: string;
+  direction: string;
+  probabilityBps: number;
+  confidence: string;
+  thesis: string;
+  counterThesis: string;
+  commitmentTimestamp: number;
+  marketMidPercent: number | null;
+  marketBestBidPercent: number | null;
+  marketBestAskPercent: number | null;
+  snapshotAsOf: number;
+  signerAddress: string | null;
+};
+
+/**
+ * Computes the SHA-256 digest anchored on Somnia for a Decision Receipt.
+ *
+ * This binds the forecast (direction, probability, confidence, thesis and
+ * counter-thesis) to the exact market evidence it was formed against, and is
+ * computed at commit time — before the outcome is known. Anchoring this value is
+ * what makes the receipt a genuine pre-settlement commitment: the resolution
+ * evidence hash cannot serve that purpose, because it does not exist until after
+ * the market has resolved.
+ *
+ * Field order is fixed; changing it changes every future digest.
+ */
+export function hashForecastCommitment(input: ForecastCommitmentDigestInput): string {
+  const canonical = JSON.stringify([
+    input.marketId,
+    input.direction,
+    input.probabilityBps,
+    input.confidence,
+    input.thesis.trim(),
+    input.counterThesis.trim(),
+    input.commitmentTimestamp,
+    input.marketMidPercent,
+    input.marketBestBidPercent,
+    input.marketBestAskPercent,
+    input.snapshotAsOf,
+    input.signerAddress ? input.signerAddress.toLowerCase() : null,
+  ]);
+  return `0x${createHash("sha256").update(canonical).digest("hex")}`;
+}
 
 export async function verifyForecastReceiptSignature(
   input: CreateReceiptInput,
@@ -230,13 +276,30 @@ export async function createDecisionReceipt(
   const qualityOutput = evaluateMarketQuality(market);
   const edgeOutput = calculateExecutableEdge(input.probabilityBps, input.direction, market, modelOutput.modelProbabilityBps);
 
+  const commitmentTimestamp = input.commitmentTimestamp ?? Math.floor(snapshot.asOf! / 1000);
+
   if (input.eip712Signature || input.signerAddress) {
-    const timestampSec = input.commitmentTimestamp ?? Math.floor(snapshot.asOf! / 1000);
-    const validSignature = await verifyForecastReceiptSignature(input, timestampSec);
+    const validSignature = await verifyForecastReceiptSignature(input, commitmentTimestamp);
     if (!validSignature) {
       throw new Error("Invalid or tampered EIP-712 forecast signature");
     }
   }
+
+  // Frozen before the outcome is known — this is the value anchored on Somnia.
+  const commitmentHash = hashForecastCommitment({
+    marketId: input.marketId,
+    direction: input.direction,
+    probabilityBps: input.probabilityBps,
+    confidence: input.confidence,
+    thesis: input.thesis,
+    counterThesis: input.counterThesis,
+    commitmentTimestamp,
+    marketMidPercent: market.midPercent,
+    marketBestBidPercent: market.bestBidPercent,
+    marketBestAskPercent: market.bestAskPercent,
+    snapshotAsOf: snapshot.asOf!,
+    signerAddress: input.signerAddress ?? null,
+  });
 
   const db = database ?? await getDb();
   if (!db) throw new Error("Database is not configured");
@@ -260,6 +323,7 @@ export async function createDecisionReceipt(
       userId,
       forecastId,
       marketSnapshotId,
+      commitmentHash,
       modelProbabilityBps: modelOutput.modelProbabilityBps,
       modelConfidence: modelOutput.modelConfidence,
       marketQuality: qualityOutput.state,
@@ -270,9 +334,12 @@ export async function createDecisionReceipt(
       tradeStatus: input.tradeStatus || "NONE",
       signerAddress: input.signerAddress || null,
       eip712Signature: input.eip712Signature || null,
+      // The amount chosen at commit time is an *intended* stake only. It becomes
+      // STAKED once anchorDecisionReceipt confirms a matching on-chain transfer,
+      // so an unpaid intention is never presented as a real stake.
       stakeAmountWei: input.stakeAmountWei || null,
       stakeTxHash: input.stakeTxHash || null,
-      stakeStatus: input.stakeAmountWei ? "STAKED" : "NONE",
+      stakeStatus: "NONE",
     });
     return insertId(receiptResult);
   });
@@ -291,14 +358,28 @@ export async function anchorDecisionReceipt(
 ) {
   const db = database ?? await getDb();
   if (!db) throw new Error("Database is not configured");
-  await assertOwnedReceipt(db, userId, receiptId);
+  const existing = await assertOwnedReceipt(db, userId, receiptId);
+
+  // A client-reported transaction hash is only a claim. Re-read the mined
+  // transaction from Somnia before recording anything: the hash written on-chain
+  // must equal this receipt's pre-settlement commitment digest, and the stake is
+  // taken from the value the transaction actually carried, not from the request.
+  const verified = await verifyAnchorTransaction(anchorTxHash, anchorAddress, existing.commitmentHash);
+  const stakedOnChain = BigInt(verified.stakeWei) > 0n;
 
   await db
     .update(decisionReceipts)
     .set({
-      anchorTxHash: anchorTxHash.trim(),
-      anchorAddress: anchorAddress.trim(),
+      anchorTxHash: verified.txHash,
+      anchorAddress: verified.from,
       anchorTimestamp: new Date(),
+      ...(stakedOnChain
+        ? {
+            stakeAmountWei: verified.stakeWei,
+            stakeTxHash: verified.txHash,
+            stakeStatus: "STAKED" as const,
+          }
+        : {}),
     })
     .where(and(eq(decisionReceipts.id, receiptId), eq(decisionReceipts.userId, userId)));
 

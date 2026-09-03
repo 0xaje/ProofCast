@@ -10,7 +10,7 @@
 [![Smart Contract](https://img.shields.io/badge/Solidity-0.8.20_Verified-f04b2f?style=for-the-badge&logo=solidity&logoColor=white)](contracts/ProofCastAnchor.sol)
 [![DreamDEX](https://img.shields.io/badge/DEX-DreamDEX_Event_Contracts-38bdf8?style=for-the-badge&logo=polkadot&logoColor=white)](https://docs.dreamdex.io)
 [![EIP-712](https://img.shields.io/badge/Cryptography-EIP--712_%2B_SHA--256-blue?style=for-the-badge&logo=letsencrypt&logoColor=white)](shared/eip712.ts)
-[![Tests](https://img.shields.io/badge/Tests-42%2F42_Passed-emerald?style=for-the-badge&logo=vitest&logoColor=white)](server/receipts.test.ts)
+[![Tests](https://img.shields.io/badge/Tests-60%2F60_Passed-emerald?style=for-the-badge&logo=vitest&logoColor=white)](server/receipts.test.ts)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict_0_Errors-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](tsconfig.json)
 [![License](https://img.shields.io/badge/License-MIT-white?style=for-the-badge)](LICENSE)
 
@@ -37,7 +37,7 @@ Prediction markets reflect what the crowd prices. However, crowd consensus is fr
 1. **Live DreamDEX Ingestion**: Direct integration with Somnia binary event pools and order-book depth via `@somnia-chain/markets-sdk`.
 2. **EventForge Dual-Layer AI**: Deterministic order-book microstructure calculations coupled with real-time multi-model AI reasoning (Claude, Gemini, DeepSeek, Meta-Ensemble).
 3. **EIP-712 Decision Receipts**: Forecasters freeze their probability, confidence, thesis, and counter-thesis into a signed SHA-256 cryptographic digest before outcome settlement.
-4. **Somnia Smart Contract Anchoring & Staking**: Immutable on-chain anchoring via `ProofCastAnchor.sol` on Somnia Shannon Testnet, with optional native `$SOM` conviction staking.
+4. **Somnia Smart Contract Anchoring & Staking**: Immutable on-chain anchoring via `ProofCastAnchor.sol` on Somnia Shannon Testnet, with optional native `STT` conviction staking, verified server-side against the mined transaction.
 5. **Automated On-Chain Resolution & Brier Calibration**: Background daemons monitor on-chain settlements, auto-resolve receipts, and calculate empirical Brier calibration scores ($BS \in [0, 1]$), registering verified **Soulbound Reputation Badges** on-chain.
 
 ---
@@ -76,7 +76,7 @@ flowchart LR
 | **02. UNDERSTAND** | Multi-Model AI | Deterministic microstructure fair value + LLM Bull/Bear reasoning. | EventForge Multi-Model Engine |
 | **03. CHALLENGE** | Stress-Test Edge | Force forecasters to articulate counter-theses and calculate net executable edge. | True Executable Edge Algorithm |
 | **04. COMMIT** | Sign Receipt | User cryptographically signs forecast probability, thesis, and evidence before settlement. | EIP-712 Typed Data + SHA-256 Digest |
-| **05. ANCHOR** | Somnia On-Chain | Anchor hash on Somnia Shannon Testnet; optional payable native `$SOM` staking. | `ProofCastAnchor.sol` Smart Contract |
+| **05. ANCHOR** | Somnia On-Chain | Anchor hash on Somnia Shannon Testnet; optional payable native `STT` staking. | `ProofCastAnchor.sol` Smart Contract |
 | **06. RESOLVE** | Auto-Settlement | Background daemon detects DreamDEX contract settlement & oracle webhooks. | `resolutionWorker.ts` / Oracle Webhook |
 | **07. PROVE** | Reputation & Calibration | Mathematical Brier calibration, lead-time bonuses, and on-chain Soulbound Badges. | Brier Scoring Engine + SBT Badges |
 
@@ -94,7 +94,7 @@ ProofCast is engineered natively around the technical architecture of the **Somn
  │  • High-Throughput Binary Event Markets  │  • Multi-Model AI Decision Engine           │
  │  • On-Chain CLOB Order Book Depth        │  • Cryptographic EIP-712 Decision Receipts  │
  │  • ERC-6909 Multi-Token Outcome Shares   │  • Immutable Somnia Smart Contract Anchor   │
- │  • Automated Contract Payout Vectors     │  • Native $SOM Staking & Conviction Pool    │
+ │  • Automated Contract Payout Vectors     │  • Native STT Staking & Conviction Pool      │
  │  • Official @somnia-chain/markets-sdk    │  • Soulbound On-Chain Reputation Badges     │
  └──────────────────────────────────────────┴─────────────────────────────────────────────┘
 ```
@@ -114,7 +114,7 @@ ProofCast is engineered natively around the technical architecture of the **Somn
 
 ### 4.2 EventForge Dual-Layer AI & SSE Streaming
 * **Layer A (Deterministic Microstructure Engine)**: Pure mathematical model computing fair value from order-book depth imbalance, spread penalty, and time decay. Output is 100% deterministic: identical market inputs yield identical probability outputs.
-* **Layer B (Multi-Model AI Reasoning)**: Real-time structured reasoning generating Bull Case, Bear Case, Key Risks, and Disagreement Analysis across Claude, Gemini, DeepSeek, and Meta-Ensemble.
+* **Layer B (Multi-Model AI Reasoning)**: Structured reasoning generating Bull Case, Bear Case, Key Risks, and Disagreement Analysis across Claude, Gemini, DeepSeek, and Meta-Ensemble. Live provider calls require the corresponding API keys; without them each model falls back to a built-in analytical engine and reports itself as `BUILTIN_ANALYTICAL` rather than `REAL_LLM`, which the UI surfaces per model.
 * **Server-Sent Events (SSE)**: Mounted at `GET /api/eventforge/stream` for live token streaming.
 * **Strict Invariant**: AI models cannot alter numerical probabilities, fabricate order books, or mutate market prices.
 
@@ -125,18 +125,21 @@ ProofCast is engineered natively around the technical architecture of the **Somn
 
 ### 4.4 Cryptographic EIP-712 Receipts & Evidence Hashing
 * **EIP-712 Typed Signing**: Standardized typed data verification (`domain: { name: "ProofCast", chainId: 50312 }`, primary type: `ForecastCommitment`) verified via `viem`.
-* **SHA-256 Digest**: Freezes market snapshot, probability, direction, thesis, counter-thesis, and timestamp into an immutable 32-byte hash.
-* **Parent-Linked Revisions**: Historical forecasts are never overwritten; updates create parent-linked `forecast_revisions`.
+* **SHA-256 Commitment Digest**: At commit time the server freezes the market evidence (mid, best bid, best ask, snapshot timestamp) together with the probability, direction, confidence, thesis, counter-thesis, and signer into an immutable 32-byte digest, stored as `decision_receipts.commitmentHash`.
+* **Pre-Settlement Anchoring**: The commitment digest — not the post-resolution evidence hash — is the value anchored on Somnia. Because it is computed before the outcome is known, the anchor proves what was believed *prior* to settlement, which is the entire claim the product rests on.
+* **Parent-Linked Revisions**: Historical forecasts are never overwritten; updates create parent-linked `forecast_revisions`. The anchored digest continues to represent the original commitment.
 
 ### 4.5 Somnia Smart Contract (`ProofCastAnchor.sol`) & Staking
 * **Non-Custodial Anchoring**: Stores `(receiptHash, marketId, timestamp, owner, stakeAmount)`.
-* **Payable $SOM Staking**: `anchorReceiptWithStake()` allows forecasters to stake native Somnia tokens behind high-conviction predictions.
+* **Payable STT Staking**: `anchorReceiptWithStake()` lets forecasters stake native Somnia tokens behind high-conviction predictions. The stake amount is chosen when the forecast is committed and is transferred on-chain at anchor time.
+* **Server-Verified Stakes**: A client-reported transaction hash is only a claim. The server re-reads the mined transaction from a Somnia RPC and confirms it succeeded, targeted the anchor contract, and came from the claiming address. The recorded stake is always the value observed on-chain, never the amount requested — an intended-but-unpaid stake stays at `NONE` and is never settled.
 * **Soulbound Forecaster Badges**: Registers verified reputation tiers (`GOLD_MASTER`, `SILVER`, `BRONZE`, `UNRANKED`) directly on-chain.
 
 ### 4.6 Automated Resolution Worker & Oracle Webhooks
 * **Automated Daemon Worker**: `server/resolutionWorker.ts` polls on-chain DreamDEX settlement status every 60 seconds without manual bottlenecks.
-* **Oracle Webhook**: `POST /api/oracle/resolve` enables sub-second settlement for UMA / Chainlink oracles with `ORACLE_WEBHOOK_SECRET` protection.
-* **Automated Stake Resolution**: Automatically transitions stakes to `WON`, `LOST`, or `REFUNDED`.
+* **Oracle Webhook**: `POST /api/oracle/resolve` enables sub-second settlement for UMA / Chainlink oracles. The endpoint **fails closed**: without `ORACLE_WEBHOOK_SECRET` configured it returns `503` rather than accepting anonymous settlement.
+* **Conclusive Settlements Only**: A binary pool settles at `>= 99%` (YES) or `<= 1%` (NO). Any price in between means the market expired without a conclusive print and is recorded `VOID`, which is excluded from calibration scoring. Outcomes are never guessed.
+* **Automated Stake Resolution**: Transitions on-chain-verified stakes to `WON`, `LOST`, or `REFUNDED`.
 
 ### 4.7 Brier Calibration & Soulbound Reputation Tiers
 * **Strict Brier Scoring**: Dimensionless $BS = (f - o)^2 \in [0, 1]$, where $0.000$ represents perfection.
@@ -217,7 +220,7 @@ graph TD
 * **Deployment Tx**: [`0x9f85fdde97a1149000f0ae4230daea2908c1d123701ff20c393d85a6b1031e46`](https://shannon-explorer.somnia.network/tx/0x9f85fdde97a1149000f0ae4230daea2908c1d123701ff20c393d85a6b1031e46)
 * **Solidity Version**: `^0.8.20`
 * **Target Network**: Somnia Shannon Testnet (`Chain ID: 50312`)
-* **Currency**: Native `STT` / `$SOM`
+* **Currency**: Native `STT`
 
 ### Core Smart Contract Interfaces
 
@@ -225,15 +228,20 @@ graph TD
 // Anchor a cryptographic decision receipt hash
 function anchorReceipt(bytes32 receiptHash, string calldata marketId) external;
 
-// Anchor a decision receipt with payable native $SOM stake
+// Anchor a decision receipt with a payable native STT stake
 function anchorReceiptWithStake(bytes32 receiptHash, string calldata marketId) external payable;
 
-// Record a verified forecaster soulbound reputation badge
-function recordForecasterBadge(address forecaster, string calldata tier, uint256 brierScoreBps) external;
+// Record a verified forecaster soulbound reputation badge (admin only)
+function recordForecasterBadge(
+    address forecaster,
+    uint8 tier,
+    uint256 brierScoreBps,
+    uint256 verifiedCount
+) external;
 
-// Retrieve an anchored receipt
-function getReceipt(bytes32 receiptHash) external view returns (
-    bytes32 hash,
+// Verify whether a receipt hash has been anchored
+function verifyAnchor(bytes32 receiptHash) external view returns (
+    bool isAnchored,
     string memory marketId,
     uint256 timestamp,
     address owner,
@@ -242,10 +250,10 @@ function getReceipt(bytes32 receiptHash) external view returns (
 
 // Retrieve a forecaster's soulbound badge
 function getForecasterBadge(address forecaster) external view returns (
-    string memory tier,
+    uint8 tier,
     uint256 brierScoreBps,
-    uint256 totalAnchored,
-    uint256 lastUpdated
+    uint256 verifiedCount,
+    uint256 updatedAt
 );
 ```
 
@@ -307,14 +315,15 @@ pnpm build
  ✓ server/dreamdex.test.ts (3 tests)
  ✓ server/eventforge.multimodel.test.ts (5 tests)
  ✓ server/eventforge.test.ts (7 tests)
+ ✓ server/integrity.test.ts (18 tests)
  ✓ server/oracle.staking.test.ts (5 tests)
  ✓ server/receipts.test.ts (16 tests)
  ✓ server/scoring.api.test.ts (1 test)
  ✓ server/scoring.integration.test.ts (1 test)
  ✓ client/src/lib/comparisonMotion.test.ts (3 tests)
 
- Test Files  9 passed (9)
-      Tests  42 passed (42)
+ Test Files  10 passed (10)
+      Tests  60 passed (60)
  TypeScript  0 diagnostics (tsc --noEmit clean)
  Production  Clean bundle build successful
 ```
@@ -328,7 +337,9 @@ pnpm build
 | **Zero Private Key Custody** | All transactions and EIP-712 hashes are signed in the browser wallet via RainbowKit / Viem. The server never handles private keys. |
 | **Model Invariance** | Layer A deterministic calculations are mathematically isolated from LLM output. AI cannot modify probabilities or prices. |
 | **Cryptographic Immutability** | Commitments produce a SHA-256 digest anchored permanently to [ProofCastAnchor.sol](contracts/ProofCastAnchor.sol) on Somnia. |
-| **Webhook Authentication** | `POST /api/oracle/resolve` requires valid `ORACLE_WEBHOOK_SECRET` authentication to prevent unauthorized resolution spoofing. |
+| **Webhook Authentication** | `POST /api/oracle/resolve` requires a valid `ORACLE_WEBHOOK_SECRET`. The endpoint **fails closed** — if no secret is configured it returns `503` rather than accepting anonymous settlement. |
+| **Verified On-Chain Anchors** | A client-reported anchor transaction is re-read from a Somnia RPC before anything is recorded: it must have succeeded, targeted the anchor contract, been sent by the claiming address, and its calldata must contain exactly this receipt's commitment digest. Stakes are credited from the value observed on-chain, never from the client's request. |
+| **No Fabricated Outcomes** | Receipts resolve only on a conclusive binary settlement print (`>= 99%` YES / `<= 1%` NO). Inconclusive expiries are recorded `VOID` and excluded from calibration scoring. |
 | **Duplicate Prevention** | `ProofCastAnchor.sol` reverts with `AlreadyAnchored` on replay attempts for previously anchored receipt hashes. |
 
 ---
