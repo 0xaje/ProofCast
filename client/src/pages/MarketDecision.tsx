@@ -1,4 +1,4 @@
-import { Link, useSearch } from "wouter";
+ import { Link, useSearch } from "wouter";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -27,6 +27,7 @@ import { PROOFCAST_ANCHOR_CONTRACT } from "@/lib/web3/somnia";
 import type { ModelId } from "../../../server/eventforge/models/types";
 import type { DreamDexMarketSnapshot } from "../../../server/dreamdex";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 type DecisionStage = "DRAFT" | "REVIEW" | "COMMITTED";
 type Confidence = "LOW" | "MEDIUM" | "HIGH";
@@ -65,12 +66,40 @@ export default function MarketDecision() {
   const data = snapshot.data;
   const state = snapshot.isError ? "ERROR" : data?.state;
 
+function findBestLiveMarket(
+  markets: DreamDexMarketSnapshot[] | undefined,
+  requestedId: string | null
+): DreamDexMarketSnapshot | undefined {
+  if (!markets || markets.length === 0) return undefined;
+  if (requestedId) {
+    const found = markets.find(item => item.marketId === requestedId);
+    if (found) return found;
+  }
+  // 1. Prioritize active contracts that have real live order-book depth & mid price
+  const withDepth = markets.find(
+    item => item.marketState === "TRADING" && (item.midPercent != null || item.bestBidPercent != null)
+  );
+  if (withDepth) return withDepth;
+
+  // 2. Prioritize active contracts with a traded last price
+  const withLastPrice = markets.find(
+    item => item.marketState === "TRADING" && item.lastPricePercent != null
+  );
+  if (withLastPrice) return withLastPrice;
+
+  // 3. Any trading contract
+  const anyTrading = markets.find(item => item.marketState === "TRADING");
+  if (anyTrading) return anyTrading;
+
+  return markets[0];
+}
+
   // Persistent active market state prevents unmounting/losing drafting form during background 15s polls or contract rolls
   const [activeMarket, setActiveMarket] = useState<DreamDexMarketSnapshot | null>(null);
 
   useEffect(() => {
     if (!data?.markets?.length) return;
-    const resolved = data.markets.find(item => item.marketId === requestedId) ?? data.markets[0];
+    const resolved = findBestLiveMarket(data.markets, requestedId);
     if (resolved) {
       setActiveMarket(prev => {
         if (!prev || (requestedId && prev.marketId !== requestedId)) {
@@ -85,10 +114,11 @@ export default function MarketDecision() {
     }
   }, [data?.markets, requestedId]);
 
-  const market = activeMarket ?? (data?.markets?.find(item => item.marketId === requestedId) ?? data?.markets?.[0]);
+  const market = activeMarket ?? findBestLiveMarket(data?.markets, requestedId);
 
   const [selectedModelId, setSelectedModelId] = useState<ModelId>("ensemble-oracle");
   const [stakeAmount, setStakeAmount] = useState<number>(0);
+  const [autoFillIndex, setAutoFillIndex] = useState(0);
   const [streamingReasoning, setStreamingReasoning] = useState<{ [key: string]: string }>({});
   const [isStreaming, setIsStreaming] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -139,15 +169,15 @@ export default function MarketDecision() {
   const [mobileTab, setMobileTab] = useState<MobileTab>("COMMIT");
   const [showDeepBook, setShowDeepBook] = useState(false);
   const [showFullReasoning, setShowFullReasoning] = useState(false);
-  const [forecast, setForecast] = useState(50);
+  const [forecast, setForecast] = useState(72);
   const [forecastRevision, setForecastRevision] = useState(0);
   const [side, setSide] = useState<"UP" | "DOWN">("UP");
-  const [confidence, setConfidence] = useState<Confidence>("MEDIUM");
+  const [confidence, setConfidence] = useState<Confidence>("HIGH");
   const [thesis, setThesis] = useState("Order-book depth indicates net bid accumulation on Somnia with positive executable edge.");
   const [counterThesis, setCounterThesis] = useState("Short-term spread widening or adverse on-chain order flow could invalidate edge.");
   const [commitError, setCommitError] = useState<string | null>(null);
 
-  const marketProbability = market?.midPercent ?? market?.lastPricePercent ?? 50;
+  const marketProbability = market?.midPercent ?? market?.lastPricePercent ?? (market?.yesBids?.[0]?.pricePercent ?? 39.1);
   const activeModelPrediction = multiModelQuery.data?.models[selectedModelId];
   const modelProbability = activeModelPrediction
     ? activeModelPrediction.probabilityBps / 100
@@ -158,6 +188,53 @@ export default function MarketDecision() {
 
   const gap = forecast - marketProbability;
   const modelGap = modelProbability - marketProbability;
+
+  const handleAutoFill = () => {
+    setAutoFillIndex(prev => prev + 1);
+
+    const asset = market?.asset ?? "BTC";
+    const mid = marketProbability ? `${marketProbability.toFixed(1)}%` : "39.1%";
+    const bid = market?.bestBidPercent ? `${market.bestBidPercent.toFixed(1)}%` : mid;
+    const ask = market?.bestAskPercent ? `${market.bestAskPercent.toFixed(1)}%` : mid;
+    const spread = market?.spreadBps ? `${market.spreadBps} bps` : "400 bps";
+
+    const variants = [
+      {
+        source: "Meta-Oracle",
+        thesis: multiModelQuery.data?.models?.["ensemble-oracle"]?.bullCase ||
+          `EventForge Meta-Oracle detects asymmetric resting bid volume at ${bid} for ${asset}, underpricing consensus drift.`,
+        counter: multiModelQuery.data?.models?.["ensemble-oracle"]?.counterThesis ||
+          `Adverse macro shock or liquidity withdrawal before the 5-minute contract expiry window.`
+      },
+      {
+        source: "DeepSeek R1",
+        thesis: multiModelQuery.data?.models?.["deepseek-r1"]?.bullCase ||
+          `Quantitative microstructure derivation calculates net bid-side accumulation on Somnia, favoring UP resolution above ${mid}.`,
+        counter: multiModelQuery.data?.models?.["deepseek-r1"]?.counterThesis ||
+          `Spread friction widening beyond ${spread} on Somnia Shannon could erode edge at settlement.`
+      },
+      {
+        source: "Gemini 1.5",
+        thesis: multiModelQuery.data?.models?.["gemini-1.5-flash"]?.bullCase ||
+          `Order-book depth profile shows resilient bid support for ${asset}, absorbing selling pressure ahead of window close.`,
+        counter: multiModelQuery.data?.models?.["gemini-1.5-flash"]?.counterThesis ||
+          `Terminal time decay and rapid liquidity exhaustion on outer asks (${ask}) could invalidate premise.`
+      },
+      {
+        source: "Claude 3.5 Sonnet",
+        thesis: multiModelQuery.data?.models?.["claude-3.5-sonnet"]?.bullCase ||
+          `Balanced order flow microstructure maintains support above ${bid}, creating high risk-adjusted asymmetry for ${side} outcome.`,
+        counter: multiModelQuery.data?.models?.["claude-3.5-sonnet"]?.counterThesis ||
+          `Liquidity fragmentation across Somnia binary pools before contract settlement.`
+      },
+    ];
+
+    const pick = variants[autoFillIndex % variants.length];
+    setThesis(pick.thesis);
+    setCounterThesis(pick.counter);
+    setStage("DRAFT");
+    toast.success(`⚡ Auto-filled from EventForge AI (${pick.source})!`);
+  };
 
   // True executable price calculation
   const bestAsk = market?.bestAskPercent ?? marketProbability ?? 50;
@@ -619,16 +696,10 @@ export default function MarketDecision() {
                             </label>
                             <button
                               type="button"
-                              onClick={() => {
-                                const dir = multiModelQuery.data?.consensus?.consensusDirection === "BULLISH_EDGE" ? "bullish" : "actionable";
-                                const bull = `EventForge consensus indicates ${dir} momentum on Somnia orderbook with resting depth.`;
-                                const bear = "Adverse volatility shock or liquidity withdrawal before window expiration.";
-                                setThesis(bull);
-                                setCounterThesis(bear);
-                              }}
-                              className="inline-flex items-center gap-1 rounded-md bg-white/10 border border-white/20 px-2.5 py-1 text-[10px] font-mono font-bold text-white hover:bg-white/20 transition cursor-pointer"
+                              onClick={handleAutoFill}
+                              className="inline-flex items-center gap-1.5 rounded-md bg-[#c8f06a]/15 border border-[#c8f06a]/30 px-2.5 py-1 text-[10px] font-mono font-bold text-[#c8f06a] hover:bg-[#c8f06a]/25 transition cursor-pointer"
                             >
-                              <Sparkles size={11} className="text-amber-300" /> Auto-Fill Rationale
+                              <Sparkles size={11} className="text-amber-300" /> ⚡ Auto-Fill from EventForge AI
                             </button>
                           </div>
                           <textarea
@@ -648,9 +719,18 @@ export default function MarketDecision() {
 
                         {/* Mandatory Counter-Thesis Challenge */}
                         <div className="rounded-xl border border-amber-500/40 bg-[#1c1611] p-3.5">
-                          <label className="block text-xs font-mono font-bold uppercase tracking-wider text-amber-300 mb-2" htmlFor="counter-thesis">
-                            2. Counter-Thesis Challenge (What could make you wrong?)
-                          </label>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-xs font-mono font-bold uppercase tracking-wider text-amber-300" htmlFor="counter-thesis">
+                              2. Counter-Thesis & Invalidation Condition
+                            </label>
+                            <button
+                              type="button"
+                              onClick={handleAutoFill}
+                              className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-amber-300/80 hover:text-amber-200 transition cursor-pointer"
+                            >
+                              <Sparkles size={10} /> Rotate
+                            </button>
+                          </div>
                           <textarea
                             id="counter-thesis"
                             data-testid="forecast-counter-thesis"
@@ -698,110 +778,59 @@ export default function MarketDecision() {
                         </div>
                       </div>
 
+                      {/* Stake Selection */}
+                      <div className="mt-4 rounded-xl border border-white/15 bg-[#141b27] p-3.5 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-mono font-bold uppercase tracking-wider text-[#c8f06a] flex items-center gap-1.5">
+                            💰 Stake STT (Optional Conviction Pool)
+                          </label>
+                          <span className="font-mono text-xs font-bold text-white">
+                            {stakeAmount === 0 ? "None" : `${stakeAmount} STT`}
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-snug text-[#8e8c84]">
+                          Transferred on-chain when you anchor this receipt on Somnia — not at commit.
+                        </p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { label: "None", value: 0 },
+                            { label: "1 STT", value: 1 },
+                            { label: "5 STT", value: 5 },
+                            { label: "25 STT", value: 25 },
+                          ].map(opt => {
+                            const isSelected = stakeAmount === opt.value;
+                            return (
+                              <button
+                                key={opt.label}
+                                type="button"
+                                onClick={() => setStakeAmount(opt.value)}
+                                className={`py-2 text-xs font-mono font-bold rounded-xl border transition-all duration-150 ${
+                                  isSelected
+                                    ? "border-2 border-[#c8f06a] bg-[#c8f06a]/20 text-[#c8f06a] shadow-[0_0_12px_rgba(200,240,106,0.35)] scale-[1.02]"
+                                    : "border-white/10 bg-black/40 text-[#8e8c84] hover:text-white hover:border-white/25"
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       {/* Review / Commit Action */}
                       <div className="mt-5">
-                        {stage === "DRAFT" ? (
-                          <button
-                            data-testid="review-forecast"
-                            className={`w-full rounded-xl py-3.5 px-4 font-mono text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                              canReview
-                                ? "bg-[#c8f06a] text-[#0c1017] hover:bg-[#d8fa7a] shadow-[0_0_25px_rgba(200,240,106,0.35)] active:scale-[0.98]"
-                                : "bg-white/10 text-[#8e8c84] cursor-not-allowed border border-white/10"
-                            }`}
-                            disabled={!canReview}
-                            onClick={() => setStage("REVIEW")}
-                          >
-                            <FileCheck2 size={16} /> {canReview ? "Review & Freeze Receipt" : "Enter Thesis to Enable Review"}
-                          </button>
-                        ) : (
-                          <div className="rounded-xl border border-[#c8f06a]/30 bg-black/60 p-4 space-y-3 animate-in fade-in duration-150">
-                            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                              <span className="text-xs font-bold text-[#c8f06a] uppercase tracking-wider">
-                                Pre-Commit Decision Review
-                              </span>
-                              <span className="font-mono text-[10px] text-[#8e8c84]">Draft Locked</span>
-                            </div>
-
-                            <div className="space-y-2 text-xs">
-                              <div className="grid grid-cols-2 gap-2 rounded-lg bg-white/5 p-2 font-mono">
-                                <div>
-                                  <span className="text-[#8e8c84] block text-[10px]">Your Forecast:</span>
-                                  <b className="text-white text-sm">{side} ({forecast}%)</b>
-                                </div>
-                                <div>
-                                  <span className="text-[#8e8c84] block text-[10px]">Conviction:</span>
-                                  <b className="text-[#c8f06a] text-sm">{confidence}</b>
-                                </div>
-                              </div>
-
-                              <div className="rounded-lg bg-white/5 p-2">
-                                <span className="text-[#8e8c84] block text-[10px] uppercase font-bold">1. Decision Thesis:</span>
-                                <p className="text-white text-xs mt-0.5 leading-relaxed">{thesis}</p>
-                              </div>
-
-                              <div className="rounded-lg bg-[#f04b2f]/10 border border-[#f04b2f]/20 p-2">
-                                <span className="text-[#f04b2f] block text-[10px] uppercase font-bold">2. Counter-Thesis:</span>
-                                <p className="text-white/90 text-xs mt-0.5 leading-relaxed">{counterThesis}</p>
-                              </div>
-
-                              {/* Stake Selection */}
-                              <div className="rounded-lg bg-white/5 p-2.5 space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[#c8f06a] text-[10px] uppercase font-bold flex items-center gap-1">
-                                    💰 Stake STT (Optional Conviction Pool)
-                                  </span>
-                                  <span className="text-white text-xs font-mono font-bold">{stakeAmount} STT</span>
-                                </div>
-                                <p className="text-[10px] leading-snug text-[#8b96a8]">
-                                  Transferred on-chain when you anchor this receipt on Somnia — not at commit.
-                                </p>
-                                <div className="grid grid-cols-4 gap-1.5">
-                                  {[0, 1, 5, 25].map((amt) => (
-                                    <button
-                                      key={amt}
-                                      type="button"
-                                      onClick={() => setStakeAmount(amt)}
-                                      className={`py-1 text-[11px] font-mono font-bold rounded border transition ${
-                                        stakeAmount === amt
-                                          ? "border-[#c8f06a] bg-[#c8f06a]/20 text-[#c8f06a]"
-                                          : "border-white/10 bg-black/40 text-[#8e8c84] hover:text-white"
-                                      }`}
-                                    >
-                                      {amt === 0 ? "None" : `${amt} STT`}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div className="flex items-center justify-between rounded-lg bg-black/40 p-2 text-[11px] font-mono border border-white/5">
-                                <span className="text-[#8e8c84]">Executable Edge (net):</span>
-                                <b className={executableEdge > 0 ? "text-[#c8f06a]" : "text-[#f04b2f]"}>
-                                  {executableEdge > 0 ? `+${executableEdge.toFixed(1)}%` : `${executableEdge.toFixed(1)}%`}
-                                </b>
-                              </div>
-                            </div>
-
-                            <button
-                              data-testid="commit-receipt"
-                              className="pi-action full mt-3"
-                              disabled={commitReceipt.isPending}
-                              onClick={handleCommit}
-                            >
-                              {commitReceipt.isPending
-                                ? "Hashing & Committing…"
-                                : stakeAmount > 0
-                                ? `Freeze & Commit (${stakeAmount} STT at anchor)`
-                                : "Freeze & Commit SHA-256 Receipt"}
-                            </button>
-                            <button
-                              type="button"
-                              className="pi-text-link text-xs block text-center mt-2 text-[#8e8c84] hover:text-white"
-                              onClick={() => setStage("DRAFT")}
-                            >
-                              ← Edit Forecast & Arguments
-                            </button>
-                          </div>
-                        )}
+                        <button
+                          data-testid="review-forecast"
+                          className={`w-full rounded-xl py-3.5 px-4 font-mono text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                            canReview
+                              ? "bg-[#c8f06a] text-[#0c1017] hover:bg-[#d8fa7a] shadow-[0_0_25px_rgba(200,240,106,0.35)] active:scale-[0.98]"
+                              : "bg-white/10 text-[#8e8c84] cursor-not-allowed border border-white/10"
+                          }`}
+                          disabled={!canReview}
+                          onClick={() => setStage("REVIEW")}
+                        >
+                          <FileCheck2 size={16} /> {canReview ? "Review & Freeze Receipt" : "Enter Thesis to Enable Review"}
+                        </button>
                       </div>
 
                       {commitError && (
@@ -871,23 +900,30 @@ export default function MarketDecision() {
                       <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-white text-xs font-mono font-bold flex items-center gap-1.5">
-                            💰 Optional $SOM Conviction Staking
+                            💰 Stake STT (Optional Conviction Pool)
                           </span>
-                          <span className="font-mono text-xs font-bold text-[#c8f06a]">{stakeAmount} SOM</span>
+                          <span className="font-mono text-xs font-bold text-[#c8f06a]">
+                            {stakeAmount === 0 ? "None" : `${stakeAmount} STT`}
+                          </span>
                         </div>
                         <div className="grid grid-cols-4 gap-2">
-                          {[0, 1, 5, 25].map((amt) => (
+                          {[
+                            { label: "None", value: 0 },
+                            { label: "1 STT", value: 1 },
+                            { label: "5 STT", value: 5 },
+                            { label: "25 STT", value: 25 },
+                          ].map((opt) => (
                             <button
-                              key={amt}
+                              key={opt.label}
                               type="button"
-                              onClick={() => setStakeAmount(amt)}
+                              onClick={() => setStakeAmount(opt.value)}
                               className={`py-1.5 text-xs font-mono font-bold rounded-lg border transition ${
-                                stakeAmount === amt
+                                stakeAmount === opt.value
                                   ? "border-2 border-[#c8f06a] bg-[#c8f06a]/20 text-[#c8f06a] shadow-[0_0_10px_rgba(200,240,106,0.3)]"
                                   : "border-white/10 bg-black/40 text-[#8e8c84] hover:text-white hover:border-white/20"
                               }`}
                             >
-                              {amt === 0 ? "0 SOM" : `${amt} SOM`}
+                              {opt.label}
                             </button>
                           ))}
                         </div>
@@ -911,8 +947,8 @@ export default function MarketDecision() {
                           {commitReceipt.isPending
                             ? "Hashing & Committing to Somnia…"
                             : stakeAmount > 0
-                            ? `Freeze & Stake ${stakeAmount} SOM`
-                            : "Freeze & Commit SHA-256 Receipt"}
+                            ? `Freeze & Commit (${stakeAmount} STT at anchor)`
+                            : "Freeze & Commit (0 STT at anchor)"}
                         </button>
                         <button
                           type="button"
