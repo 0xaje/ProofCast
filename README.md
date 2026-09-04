@@ -153,6 +153,16 @@ ProofCast is engineered natively around the technical architecture of the **Somn
   | **Bronze** | `Bronze Forecaster` | $\ge 5$ verified receipts, $BS \le 0.25$, Accuracy $\ge 50\%$ |
   | **Unranked** | `Unranked Apprentice` | $< 5$ verified receipts |
 
+### 4.8 Executive Web3 Terminal & Audit Suite
+* **Tactile 1-Click Theme Engine**: Seamless toggle between sleek Cyberpunk Dark Mode and high-legibility Light Mode without disruptive text labels.
+* **3-Stage Illuminated Decision Loop**: High-visibility real-time pipeline (`01 Observe`, `02 Commit`, `03 Prove`) linked to Somnia telemetry.
+* **Architectural Decision Hygiene Suite**: Centers live order-book discovery, EventForge multi-model edge calculations, and cryptographic SHA-256 seal inspection.
+* **Proof Profile & Calibration Suite**:
+  - Real-time on-chain reputation progress tracker with progression to Gold Master / Silver / Bronze tiers.
+  - Dual-view ledger terminal with instant multi-attribute search across local receipts and network-wide verified proofs.
+  - Interactive 5-bin empirical reliability grid mapping predicted probabilities against observed market settlements.
+  - One-click Somnia Shannon transaction explorer inspection and CSV export for independent audit.
+
 ---
 
 ## 5. System Architecture
