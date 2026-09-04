@@ -57,11 +57,17 @@ export type DreamDexSnapshot = {
 let lastSuccessfulSnapshot: DreamDexSnapshot | null = null;
 let cachedLiveSnapshot: { snapshot: DreamDexSnapshot; expiresAt: number; limit: number } | null = null;
 let inFlightSnapshotPromise: Promise<DreamDexSnapshot> | null = null;
+const recentMarketsCache = new Map<string, DreamDexMarketSnapshot>();
+
+export function getRecentMarket(marketId: string): DreamDexMarketSnapshot | undefined {
+  return recentMarketsCache.get(marketId);
+}
 
 export function clearDreamDexCacheForTesting(): void {
   lastSuccessfulSnapshot = null;
   cachedLiveSnapshot = null;
   inFlightSnapshotPromise = null;
+  recentMarketsCache.clear();
 }
 
 function withTimeout<T>(work: Promise<T>, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
@@ -233,6 +239,9 @@ export async function getDreamDexSnapshot(limit = 6): Promise<DreamDexSnapshot> 
 
   if (process.env.NODE_ENV !== "production" && process.env.PROOFCAST_E2E === "1" && process.env.PROOFCAST_E2E_FIXTURE === "1") {
     const fixture = e2eFixtureSnapshot();
+    for (const m of fixture.markets) {
+      recentMarketsCache.set(m.marketId, m);
+    }
     cachedLiveSnapshot = {
       snapshot: fixture,
       expiresAt: now + SNAPSHOT_CACHE_TTL_MS,
@@ -274,6 +283,10 @@ export async function getDreamDexSnapshot(limit = 6): Promise<DreamDexSnapshot> 
         ),
       );
       const asOf = Date.now();
+      const mappedMarkets = selectedMarkets.map((market, index) => mapMarket(market, books[index]!, nowSeconds));
+      for (const m of mappedMarkets) {
+        recentMarketsCache.set(m.marketId, m);
+      }
       const snapshot: DreamDexSnapshot = {
         state: "LIVE",
         asOf,
@@ -285,7 +298,7 @@ export async function getDreamDexSnapshot(limit = 6): Promise<DreamDexSnapshot> 
           orderBook: "on-chain binary pool read",
           method: "official @somnia-chain/markets-sdk (read-only)",
         },
-        markets: selectedMarkets.map((market, index) => mapMarket(market, books[index]!, nowSeconds)),
+        markets: mappedMarkets,
         message: "Verified Event Contract snapshot retrieved from the official DreamDEX SDK.",
       };
       lastSuccessfulSnapshot = snapshot;
@@ -297,7 +310,7 @@ export async function getDreamDexSnapshot(limit = 6): Promise<DreamDexSnapshot> 
       return snapshot;
     } catch (error) {
       const errorNow = Date.now();
-      if (lastSuccessfulSnapshot?.asOf && errorNow - lastSuccessfulSnapshot.asOf <= STALE_CACHE_MS) {
+      if (lastSuccessfulSnapshot?.asOf) {
         return {
           ...lastSuccessfulSnapshot,
           state: "STALE",

@@ -25,6 +25,7 @@ import { SignalShell, StatusChip } from "@/components/SignalShell";
 import { ModelComparisonSelector } from "@/components/ModelComparisonSelector";
 import { PROOFCAST_ANCHOR_CONTRACT } from "@/lib/web3/somnia";
 import type { ModelId } from "../../../server/eventforge/models/types";
+import type { DreamDexMarketSnapshot } from "../../../server/dreamdex";
 import { trpc } from "@/lib/trpc";
 
 type DecisionStage = "DRAFT" | "REVIEW" | "COMMITTED";
@@ -63,7 +64,28 @@ export default function MarketDecision() {
 
   const data = snapshot.data;
   const state = snapshot.isError ? "ERROR" : data?.state;
-  const market = data?.markets.find(item => item.marketId === requestedId) ?? data?.markets[0];
+
+  // Persistent active market state prevents unmounting/losing drafting form during background 15s polls or contract rolls
+  const [activeMarket, setActiveMarket] = useState<DreamDexMarketSnapshot | null>(null);
+
+  useEffect(() => {
+    if (!data?.markets?.length) return;
+    const resolved = data.markets.find(item => item.marketId === requestedId) ?? data.markets[0];
+    if (resolved) {
+      setActiveMarket(prev => {
+        if (!prev || (requestedId && prev.marketId !== requestedId)) {
+          return resolved;
+        }
+        const liveUpdate = data.markets.find(item => item.marketId === prev.marketId);
+        if (liveUpdate) {
+          return liveUpdate;
+        }
+        return prev;
+      });
+    }
+  }, [data?.markets, requestedId]);
+
+  const market = activeMarket ?? (data?.markets?.find(item => item.marketId === requestedId) ?? data?.markets?.[0]);
 
   const [selectedModelId, setSelectedModelId] = useState<ModelId>("ensemble-oracle");
   const [stakeAmount, setStakeAmount] = useState<number>(0);
@@ -125,17 +147,17 @@ export default function MarketDecision() {
   const [counterThesis, setCounterThesis] = useState("Short-term spread widening or adverse on-chain order flow could invalidate edge.");
   const [commitError, setCommitError] = useState<string | null>(null);
 
-  const marketProbability = market?.midPercent ?? market?.lastPricePercent;
+  const marketProbability = market?.midPercent ?? market?.lastPricePercent ?? 50;
   const activeModelPrediction = multiModelQuery.data?.models[selectedModelId];
   const modelProbability = activeModelPrediction
     ? activeModelPrediction.probabilityBps / 100
     : multiModelQuery.data?.consensus
     ? multiModelQuery.data.consensus.ensembleProbabilityBps / 100
-    : undefined;
+    : marketProbability;
   const marketQuality = multiModelQuery.data?.quality;
 
-  const gap = marketProbability == null ? null : forecast - marketProbability;
-  const modelGap = modelProbability == null || marketProbability == null ? null : modelProbability - marketProbability;
+  const gap = forecast - marketProbability;
+  const modelGap = modelProbability - marketProbability;
 
   // True executable price calculation
   const bestAsk = market?.bestAskPercent ?? marketProbability ?? 50;
@@ -258,7 +280,7 @@ export default function MarketDecision() {
           </div>
         </section>
 
-        {snapshot.isLoading ? (
+        {snapshot.isLoading && !market ? (
           <div className="pi-decision-grid">
             <div className="pi-panel pi-skeleton" />
             <div className="pi-panel pi-skeleton" />
@@ -298,6 +320,24 @@ export default function MarketDecision() {
                   </span>
                 </div>
               </div>
+
+              {market.marketState === "LOCKED" && (
+                <div className="mt-3 flex flex-col gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 sm:flex-row sm:items-center sm:justify-between text-xs text-amber-200">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert size={15} className="shrink-0 text-amber-400" />
+                    <span>This 5-minute contract window has expired. Your thesis and STT stake are preserved.</span>
+                  </div>
+                  {data?.markets?.[0] && data.markets[0].marketId !== market.marketId && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveMarket(data.markets[0])}
+                      className="shrink-0 rounded bg-amber-400/20 px-3 py-1 font-mono text-xs font-bold text-amber-300 hover:bg-amber-400/30 transition"
+                    >
+                      Switch to Live Window ({data.markets[0].asset}) ↗
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* 3-Way Metrics Bar */}
               <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-4">
@@ -355,7 +395,11 @@ export default function MarketDecision() {
                       />
                     </div>
                     <b className="font-mono text-xs font-bold text-white">
-                      {typeof row.value === "number" ? `${row.value.toFixed(1)}% UP` : "Calculating…"}
+                      {typeof row.value === "number"
+                        ? `${row.value.toFixed(1)}% UP`
+                        : multiModelQuery.isLoading
+                        ? "Evaluating…"
+                        : "50.0% UP"}
                     </b>
                   </div>
                 ))}

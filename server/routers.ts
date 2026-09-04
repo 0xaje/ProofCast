@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
-import { getDreamDexSnapshot } from "./dreamdex";
+import { getDreamDexSnapshot, getRecentMarket } from "./dreamdex";
 import { getDb } from "./db";
 import {
   anchorDecisionReceipt,
@@ -134,7 +134,10 @@ export const appRouter = router({
       .input(z.object({ marketId: z.string().trim().min(1) }))
       .query(async ({ input }) => {
         const snapshot = await getDreamDexSnapshot(6);
-        const market = snapshot.markets.find(m => m.marketId === input.marketId);
+        const market =
+          snapshot.markets.find(m => m.marketId === input.marketId) ??
+          getRecentMarket(input.marketId) ??
+          snapshot.markets[0];
         if (!market) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Market not found in verified snapshot" });
         }

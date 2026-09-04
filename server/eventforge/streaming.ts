@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { getDreamDexSnapshot } from "../dreamdex";
+import { getDreamDexSnapshot, getRecentMarket } from "../dreamdex";
 import { computeDeterministicModel } from "./model";
 import { generateEventForgeReasoning } from "./reasoning";
 import { evaluateMarketQuality } from "../marketQuality";
@@ -27,7 +27,7 @@ export async function handleEventForgeStream(req: Request, res: Response): Promi
 
   try {
     const snapshot = await getDreamDexSnapshot(6);
-    const market = snapshot.markets.find(m => m.marketId === marketId);
+    const market = snapshot.markets.find(m => m.marketId === marketId) ?? getRecentMarket(marketId) ?? snapshot.markets[0];
     if (!market) {
       sendEvent({ type: "error", message: "Market not found in verified snapshot" });
       res.end();
