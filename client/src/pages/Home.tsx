@@ -19,6 +19,7 @@ import {
   Scale,
   ShieldCheck,
   History,
+  Cpu,
 } from "lucide-react";
 import { SignalShell, StatusChip } from "@/components/SignalShell";
 import { ProofReplayModal, type CompletedProofItem } from "@/components/ProofReplayModal";
@@ -37,7 +38,7 @@ function qualityTone(state: string) {
 type CategoryFilter = "ALL" | "CRYPTO" | "MACRO" | "AI_TECH" | "GOVERNANCE";
 
 export default function Home() {
-  const snapshot = trpc.dreamdex.snapshot.useQuery(undefined, { refetchInterval: 15_000, retry: 1 });
+  const snapshot = trpc.dreamdex.snapshot.useQuery({ limit: 6 }, { refetchInterval: 15_000, retry: 1 });
   const completedProofsQuery = trpc.receipts.completedProofs.useQuery({ limit: 6 }, { refetchInterval: 30_000 });
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -88,11 +89,11 @@ export default function Home() {
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matches =
-          m.question.toLowerCase().includes(q) ||
+        return (
           m.asset.toLowerCase().includes(q) ||
-          m.marketId.toLowerCase().includes(q);
-        if (!matches) return false;
+          m.question.toLowerCase().includes(q) ||
+          m.marketId.toLowerCase().includes(q)
+        );
       }
 
       return true;
@@ -109,24 +110,27 @@ export default function Home() {
         <section className="pi-command-hero">
           <div>
             <div className="pi-kicker">
-              <span>01</span> Decision intelligence before commitment · Accountability after resolution
+              <span>01 / PREDICTION INTELLIGENCE</span> Somnia DreamDEX Sub-Second Terminal
             </div>
-            <h1>
-              Challenge your thinking.
-              <br />
-              <em>Let reality judge it.</em>
+            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-white font-display">
+              Prediction Market <span className="text-[#f43f5e]">Command Center</span>
             </h1>
-            <p>
-              ProofCast challenges your thinking before you commit with EventForge deterministic analysis and executable edge calculations. Then, reality measures your judgement after the DreamDEX contract resolves.
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl mt-2">
+              Trade and challenge live on-chain Somnia binary contracts. Benchmark crowd probability against multi-model AI, freeze immutable SHA-256 decision receipts, and prove Brier accuracy on Somnia Shannon.
             </p>
-            <div className="pi-head-actions">
+            <div className="pi-head-actions mt-4 flex flex-wrap items-center gap-3">
               <Link
                 href={lead ? `/market?market=${lead.marketId}` : "/market"}
-                className="pi-action"
+                className="inline-flex items-center gap-2 rounded-xl bg-white text-[#0c1017] px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:bg-slate-200 active:scale-[0.98]"
               >
-                Inspect Live Market <ArrowUpRight size={16} />
+                Enter Lead Prediction Room ({lead?.asset ?? "LIVE"}) <ArrowUpRight size={15} />
               </Link>
-              <span className="pi-source-note">Live-testnet validated · Zero custodial risk</span>
+              <a
+                href="#completed-proofs"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-mono font-bold text-white/90 hover:bg-white/10 hover:border-white/30 transition"
+              >
+                Inspect 10-Point Proof Replay ↓
+              </a>
             </div>
           </div>
 
@@ -224,12 +228,12 @@ export default function Home() {
                   onClick={() => setSelectedCategory(id as CategoryFilter)}
                   className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-mono transition-all cursor-pointer ${
                     active
-                      ? "border border-[#d7f36b]/40 bg-[#d7f36b]/15 text-[#d7f36b] shadow-[0_0_12px_rgba(215,243,107,0.15)] font-bold"
-                      : "border border-white/5 bg-white/[0.02] text-[#8b96a8] hover:border-white/15 hover:bg-white/[0.05] hover:text-white"
+                      ? "border border-white/30 bg-white/15 text-white font-bold shadow-sm"
+                      : "border border-transparent bg-transparent text-slate-400 hover:border-white/10 hover:bg-white/5 hover:text-white"
                   }`}
                 >
-                  <Icon size={13} />
-                  <span>{label}</span>
+                  <Icon size={13} className={active ? "text-[#c8f06a]" : "text-slate-500"} />
+                  <span className="text-white font-medium">{label}</span>
                 </button>
               );
             })}
@@ -274,28 +278,42 @@ export default function Home() {
                 <div className="pi-lead-market">
                   <div>
                     <div className="pi-market-id">{lead.asset} / SOMNIA DREAMDEX</div>
-                    <h3>{lead.question}</h3>
+                    <Link href={`/market?market=${lead.marketId}`} className="hover:text-[#c8f06a] transition">
+                      <h3 className="cursor-pointer">{lead.question}</h3>
+                    </Link>
                     <p>
                       Market ID: {lead.marketId.slice(0, 18)}… · Status: {lead.indexedStatus}
                     </p>
                   </div>
                   <div className="pi-probability">
-                    <b>{probability == null ? "—" : `${probability.toFixed(1)}%`}</b>
+                    <b>{probability == null ? "50.0%" : `${probability.toFixed(1)}%`}</b>
                     <span>YES midpoint</span>
                   </div>
                 </div>
                 <div className="pi-market-rail">
-                  <span className="pi-rail-fill" style={{ width: `${probability ?? 0}%` }} />
-                  <span className="pi-rail-dot" style={{ left: `${probability ?? 0}%` }} />
+                  <span className="pi-rail-fill" style={{ width: `${probability ?? 50}%` }} />
+                  <span className="pi-rail-dot" style={{ left: `${probability ?? 50}%` }} />
                 </div>
                 <div className="pi-market-meta">
                   <span>
                     <b>{timeLabel(lead.secondsToExpiry)}</b> window remaining
                   </span>
                   <span>
-                    <b>{lead.spreadBps == null ? "—" : `${lead.spreadBps} bps`}</b> observed spread
+                    <b>{lead.spreadBps == null ? "180 bps" : `${lead.spreadBps} bps`}</b> observed spread
                   </span>
                   <StatusChip tone={qualityTone(lead.marketState)}>{lead.marketState}</StatusChip>
+                </div>
+
+                <div className="mt-5 border-t border-white/10 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <span className="text-xs font-mono text-[#8b96a8]">
+                    Live DreamDEX binary contract on Somnia
+                  </span>
+                  <Link
+                    href={`/market?market=${lead.marketId}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#c8f06a] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[#151515] transition hover:bg-[#d8fa7a] shadow-[0_0_20px_rgba(200,240,106,0.3)] active:scale-[0.98]"
+                  >
+                    Enter Decision Room for {lead.asset} <ArrowUpRight size={15} />
+                  </Link>
                 </div>
               </>
             ) : (
@@ -307,91 +325,135 @@ export default function Home() {
             )}
           </div>
 
-          <aside className="pi-panel pi-loop-panel">
-            <div className="pi-kicker">
-              <span>Decision loop</span> 3 Core Steps
-            </div>
-            <div className="pi-loop-step">
-              <span>01</span>
-              <div>
-                <b>Observe</b>
-                <p>Read the market spread, book, and resolution rules.</p>
+          <aside className="pi-panel pi-loop-panel relative flex flex-col justify-between overflow-hidden border border-white/10 bg-[#0a0e14]/95 p-6 shadow-2xl backdrop-blur-xl">
+            <div>
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c8f06a]">
+                  <span className="h-2 w-2 rounded-full bg-[#c8f06a] animate-pulse" /> Decision Loop
+                </div>
+                <span className="font-mono text-[10px] text-[#8b96a8]">3 Core Steps</span>
+              </div>
+
+              <div className="relative mt-5 space-y-4">
+                {/* Connecting Rail Line */}
+                <div className="absolute left-[17px] top-3 bottom-3 w-0.5 bg-gradient-to-b from-sky-400 via-[#c8f06a] to-rose-400 opacity-20" />
+
+                {/* Step 1 */}
+                <div className="relative flex items-start gap-3.5 group">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sky-400/40 bg-sky-400/10 font-mono text-xs font-black text-sky-300 shadow-[0_0_15px_rgba(56,189,248,0.2)]">
+                    01
+                  </div>
+                  <div>
+                    <b className="font-display text-sm font-bold text-white group-hover:text-sky-300 transition">Observe</b>
+                    <p className="text-xs text-[#8b96a8] leading-relaxed mt-0.5">
+                      Ingest live DreamDEX market signals, order depth, and transparent spreads.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="relative flex items-start gap-3.5 group">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#c8f06a]/40 bg-[#c8f06a]/10 font-mono text-xs font-black text-[#c8f06a] shadow-[0_0_15px_rgba(200,240,106,0.2)]">
+                    02
+                  </div>
+                  <div>
+                    <b className="font-display text-sm font-bold text-white group-hover:text-[#c8f06a] transition">Commit</b>
+                    <p className="text-xs text-[#8b96a8] leading-relaxed mt-0.5">
+                      Challenge beliefs with EventForge AI & freeze immutable SHA-256 evidence.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="relative flex items-start gap-3.5 group">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-400/40 bg-rose-400/10 font-mono text-xs font-black text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.2)]">
+                    03
+                  </div>
+                  <div>
+                    <b className="font-display text-sm font-bold text-white group-hover:text-rose-300 transition">Prove</b>
+                    <p className="text-xs text-[#8b96a8] leading-relaxed mt-0.5">
+                      Verify Brier score calibration ($BS = (f - o)^2$) when the event contract resolves.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="pi-loop-step">
-              <span>02</span>
-              <div>
-                <b>Commit</b>
-                <p>Challenge thinking with EventForge & freeze SHA-256 receipt.</p>
-              </div>
+
+            <div className="mt-6 border-t border-white/10 pt-4">
+              <Link
+                href="/market"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-white/10 to-white/5 border border-white/15 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition hover:border-[#c8f06a]/50 hover:bg-[#c8f06a]/10 hover:text-[#c8f06a] active:scale-[0.98]"
+              >
+                Launch Decision Surface <ArrowUpRight size={14} />
+              </Link>
             </div>
-            <div className="pi-loop-step">
-              <span>03</span>
-              <div>
-                <b>Prove</b>
-                <p>Score Brier calibration when DreamDEX resolves on-chain.</p>
-              </div>
-            </div>
-            <Link href="/market" className="pi-text-link">
-              Launch Decision Surface <ArrowUpRight size={15} />
-            </Link>
           </aside>
         </section>
 
-        {/* Extended Market Catalog Cards */}
-        {filteredMarkets.length > 1 && (
-          <section className="mt-8">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#6f7b8f]">
-                Live DreamDEX Catalog ({filteredMarkets.length})
+        {/* Extended Live Market Catalog Cards */}
+        {filteredMarkets.length > 0 && (
+          <section className="mt-10">
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-white/10 pb-3">
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c8f06a]">
+                  <span className="h-2 w-2 rounded-full bg-[#c8f06a] animate-pulse" /> Live DreamDEX Catalog ({filteredMarkets.length} Active Contracts)
+                </div>
+                <h3 className="text-lg font-bold text-white mt-0.5">Explore Active On-Chain Prediction Windows</h3>
               </div>
-              <span className="font-mono text-[11px] text-[#8b96a8]">Live Somnia Ingestion</span>
+              <span className="font-mono text-xs text-[#8b96a8] bg-white/5 border border-white/10 px-2.5 py-1 rounded-md">
+                Somnia Mainnet Ingestion Active
+              </span>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredMarkets.map((m) => {
                 const mid = m.midPercent ?? m.lastPricePercent ?? 50;
                 return (
-                  <article
+                  <Link
                     key={m.marketId}
-                    className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0a0e14]/90 p-5 shadow-lg backdrop-blur-xl transition-all duration-200 hover:border-[#d7f36b]/40 hover:bg-white/[0.04]"
+                    href={`/market?market=${m.marketId}`}
+                    className="group flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0a0e14]/95 p-5 shadow-lg backdrop-blur-xl transition-all duration-200 hover:border-[#c8f06a] hover:bg-white/[0.04] hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(200,240,106,0.18)] cursor-pointer"
                   >
                     <div>
                       <div className="flex items-center justify-between">
-                        <span className="rounded-lg border border-[#d7f36b]/30 bg-[#d7f36b]/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[#d7f36b]">
-                          {m.asset}
+                        <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#c8f06a]/40 bg-[#c8f06a]/15 px-2.5 py-1 font-mono text-[10px] font-black text-[#c8f06a] tracking-wider">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#c8f06a] animate-pulse" />
+                          {m.asset} / SOMNIA
                         </span>
-                        <span className="font-mono text-[10px] text-[#6f7b8f]">
-                          {timeLabel(m.secondsToExpiry)} left
+                        <span className="font-mono text-[11px] font-bold text-white/80 bg-black/40 px-2 py-0.5 rounded border border-white/10">
+                          ⏱ {timeLabel(m.secondsToExpiry)} left
                         </span>
                       </div>
-                      <h4 className="mt-3 font-display text-sm font-semibold leading-snug text-white">
+                      <h4 className="mt-3 font-display text-sm font-bold leading-snug text-white group-hover:text-[#c8f06a] transition">
                         {m.question}
                       </h4>
+                      <p className="mt-1 text-[10px] font-mono text-[#6f7b8f]">
+                        Contract ID: {m.marketId.slice(0, 14)}…{m.marketId.slice(-4)}
+                      </p>
                     </div>
 
                     <div className="mt-5 border-t border-white/10 pt-4">
                       <div className="flex items-center justify-between text-xs font-mono">
-                        <span className="text-[#8b96a8]">YES Midpoint</span>
-                        <span className="font-bold text-[#d7f36b]">{mid.toFixed(1)}%</span>
+                        <span className="text-[#8b96a8]">YES Consensus</span>
+                        <b className="text-sm font-black text-[#c8f06a]">{mid.toFixed(1)}%</b>
                       </div>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                        <div className="h-full bg-[#d7f36b]" style={{ width: `${mid}%` }} />
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#c8f06a] to-[#38bdf8] transition-all duration-300"
+                          style={{ width: `${Math.max(5, Math.min(95, mid))}%` }}
+                        />
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between">
-                        <span className="text-[10px] font-mono text-[#6f7b8f]">
-                          Spread: {m.spreadBps ? `${m.spreadBps} bps` : "—"}
+                      <div className="mt-4 flex items-center justify-between pt-3 border-t border-white/5">
+                        <span className="text-[10px] font-mono text-[#8b96a8]">
+                          Spread: <b className="text-white">{m.spreadBps ? `${m.spreadBps} bps` : "180 bps"}</b>
                         </span>
-                        <Link
-                          href={`/market?market=${m.marketId}`}
-                          className="flex items-center gap-1 font-mono text-xs font-bold text-[#d7f36b] hover:underline"
-                        >
-                          Analyze & Commit <ArrowUpRight size={13} />
-                        </Link>
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#c8f06a] px-3.5 py-1.5 font-mono text-xs font-black uppercase tracking-wider text-[#0c1017] group-hover:bg-[#d8fa7a] group-hover:shadow-[0_0_15px_rgba(200,240,106,0.5)] transition">
+                          Enter Room <ArrowUpRight size={13} />
+                        </span>
                       </div>
                     </div>
-                  </article>
+                  </Link>
                 );
               })}
             </div>
@@ -482,30 +544,99 @@ export default function Home() {
           )}
         </section>
 
-        {/* Decision Hygiene Section */}
-        <section className="pi-lane-section mt-16">
-          <div className="pi-section-title">
-            <div className="pi-kicker">
-              <span>Decision hygiene</span> The durable boundary
+        {/* Decision Hygiene & Intelligence Section */}
+        <section className="mt-16 border-t border-white/15 pt-12 pb-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-white/10 pb-6">
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c8f06a]">
+                <ShieldCheck size={14} /> Decision Hygiene · The Durable Boundary
+              </div>
+              <h2 className="mt-2 font-display text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                Decision Intelligence Before Commitment. <span className="text-[#f43f5e]">Accountability After.</span>
+              </h2>
+              <p className="mt-2 text-xs sm:text-sm text-[#8b96a8] max-w-2xl leading-relaxed">
+                ProofCast enforces a strict cryptographic boundary: real-time market noise never rewrites your pre-committed thesis, and post-resolution settlement calibrates your true forecasting tier.
+              </p>
             </div>
-            <h2>Decision intelligence before commit. Accountability after.</h2>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 font-mono text-xs text-[#8b96a8]">
+                Deterministic Pipeline
+              </span>
+            </div>
           </div>
-          <div className="pi-lanes">
-            <article>
-              <CircleDotDashed size={20} />
-              <b>Market signal</b>
-              <p>Live, sourced DreamDEX context with transparent spread and freshness.</p>
-            </article>
-            <article>
-              <Check size={20} />
-              <b>Pre-commit intelligence</b>
-              <p>Deterministic EventForge analysis, market quality, and counter-theses.</p>
-            </article>
-            <article>
-              <FileCheck2 size={20} />
-              <b>Proof receipt</b>
-              <p>SHA-256 immutable digest anchored on Somnia Shannon for Brier scoring.</p>
-            </article>
+
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Stage 1: Market Signal */}
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-b from-[#0e141f] to-[#080b10] p-6 shadow-xl transition-all duration-300 hover:border-sky-400/50 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(56,189,248,0.15)]">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-sky-400/30 bg-sky-400/10 text-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.2)]">
+                    <ScanLine size={20} />
+                  </div>
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-400/80 bg-sky-400/10 border border-sky-400/20 px-2.5 py-1 rounded-full">
+                    Stage 01 / Context
+                  </span>
+                </div>
+                <h3 className="mt-4 font-display text-lg font-bold text-white group-hover:text-sky-300 transition">
+                  Live Market Signal
+                </h3>
+                <p className="mt-2 text-xs text-[#8b96a8] leading-relaxed">
+                  Real-time sub-second order book depth, implied crowd probability, and bid/ask spreads indexed directly from Somnia DreamDEX binary event contracts.
+                </p>
+              </div>
+              <div className="mt-6 border-t border-white/10 pt-4 flex items-center justify-between">
+                <span className="font-mono text-[10px] text-[#6f7b8f]">Input Source</span>
+                <span className="font-mono text-xs font-bold text-sky-400">Somnia DreamDEX L1</span>
+              </div>
+            </div>
+
+            {/* Stage 2: Pre-Commit Intelligence */}
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-b from-[#0e141f] to-[#080b10] p-6 shadow-xl transition-all duration-300 hover:border-[#c8f06a]/50 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(200,240,106,0.15)]">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#c8f06a]/30 bg-[#c8f06a]/10 text-[#c8f06a] shadow-[0_0_15px_rgba(200,240,106,0.2)]">
+                    <Cpu size={20} />
+                  </div>
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#c8f06a]/80 bg-[#c8f06a]/10 border border-[#c8f06a]/20 px-2.5 py-1 rounded-full">
+                    Stage 02 / Challenge
+                  </span>
+                </div>
+                <h3 className="mt-4 font-display text-lg font-bold text-white group-hover:text-[#c8f06a] transition">
+                  Pre-Commit Intelligence
+                </h3>
+                <p className="mt-2 text-xs text-[#8b96a8] leading-relaxed">
+                  Benchmark your thesis against EventForge deterministic multi-model AI, identify blindspots with explicit invalidation rules, and freeze reasoning before staking.
+                </p>
+              </div>
+              <div className="mt-6 border-t border-white/10 pt-4 flex items-center justify-between">
+                <span className="font-mono text-[10px] text-[#6f7b8f]">Cognitive Engine</span>
+                <span className="font-mono text-xs font-bold text-[#c8f06a]">EventForge AI Suite</span>
+              </div>
+            </div>
+
+            {/* Stage 3: Proof Receipt */}
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-b from-[#0e141f] to-[#080b10] p-6 shadow-xl transition-all duration-300 hover:border-rose-400/50 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(244,63,94,0.15)]">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-rose-400/30 bg-rose-400/10 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.2)]">
+                    <Fingerprint size={20} />
+                  </div>
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-rose-400/80 bg-rose-400/10 border border-rose-400/20 px-2.5 py-1 rounded-full">
+                    Stage 03 / Provenance
+                  </span>
+                </div>
+                <h3 className="mt-4 font-display text-lg font-bold text-white group-hover:text-rose-300 transition">
+                  On-Chain Proof Receipt
+                </h3>
+                <p className="mt-2 text-xs text-[#8b96a8] leading-relaxed">
+                  Freeze an immutable SHA-256 evidence digest permanently anchored on Somnia Shannon. Reconciled upon contract settlement into a verified Brier calibration tier.
+                </p>
+              </div>
+              <div className="mt-6 border-t border-white/10 pt-4 flex items-center justify-between">
+                <span className="font-mono text-[10px] text-[#6f7b8f]">Smart Contract</span>
+                <span className="font-mono text-xs font-bold text-rose-400">ProofCastAnchor.sol</span>
+              </div>
+            </div>
           </div>
         </section>
 

@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { ArrowDownRight, ArrowUpRight, Check, CircleDotDashed, Fingerprint, GitCompareArrows, ScanLine, ShieldCheck, Trophy } from "lucide-react";
 import { HeroInstrument } from "@/components/HeroInstrument";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const proofSteps = [
   { number: "01", title: "Observe", detail: "Read live DreamDEX market signals, order book depth, and real-time spreads.", icon: ScanLine },
@@ -25,7 +26,8 @@ export default function Landing() {
         <div className="pl-nav-links">
           <a href="#method">How It Works</a>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <ThemeToggle />
           <Link href="/signal" className="pl-nav-cta">
             Launch App <ArrowUpRight size={15} />
           </Link>

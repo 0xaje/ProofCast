@@ -214,7 +214,7 @@ function e2eFixtureSnapshot(): DreamDexSnapshot {
   };
 }
 
-export async function getDreamDexSnapshot(limit = 3): Promise<DreamDexSnapshot> {
+export async function getDreamDexSnapshot(limit = 6): Promise<DreamDexSnapshot> {
   const now = Date.now();
   // Return cached live snapshot if still valid and covers requested limit
   if (

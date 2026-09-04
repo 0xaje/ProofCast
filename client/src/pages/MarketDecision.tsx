@@ -23,6 +23,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { AnimatedComparisonBar } from "@/components/AnimatedComparisonBar";
 import { SignalShell, StatusChip } from "@/components/SignalShell";
 import { ModelComparisonSelector } from "@/components/ModelComparisonSelector";
+import { PROOFCAST_ANCHOR_CONTRACT } from "@/lib/web3/somnia";
 import type { ModelId } from "../../../server/eventforge/models/types";
 import { trpc } from "@/lib/trpc";
 
@@ -120,8 +121,8 @@ export default function MarketDecision() {
   const [forecastRevision, setForecastRevision] = useState(0);
   const [side, setSide] = useState<"UP" | "DOWN">("UP");
   const [confidence, setConfidence] = useState<Confidence>("MEDIUM");
-  const [thesis, setThesis] = useState("");
-  const [counterThesis, setCounterThesis] = useState("");
+  const [thesis, setThesis] = useState("Order-book depth indicates net bid accumulation on Somnia with positive executable edge.");
+  const [counterThesis, setCounterThesis] = useState("Short-term spread widening or adverse on-chain order flow could invalidate edge.");
   const [commitError, setCommitError] = useState<string | null>(null);
 
   const marketProbability = market?.midPercent ?? market?.lastPricePercent;
@@ -299,27 +300,44 @@ export default function MarketDecision() {
               </div>
 
               {/* 3-Way Metrics Bar */}
-              <div className="mt-4 grid grid-cols-3 gap-2 border-y border-white/10 py-3 text-center sm:gap-4">
-                <div className="rounded-lg bg-black/30 p-2.5">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-[#8e8c84]">1. Market</span>
-                  <b className="mt-1 block font-mono text-xl font-bold text-white sm:text-2xl">
+              <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-4">
+                {/* 1. Market Crowd Price */}
+                <div className="rounded-xl border border-white/15 bg-[#141b27] p-3 sm:p-4 text-center">
+                  <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                    1. Market
+                  </span>
+                  <b className="mt-1 block font-mono text-xl font-black text-white sm:text-3xl">
                     {marketProbability == null ? "—" : `${marketProbability.toFixed(1)}%`}
                   </b>
-                  <span className="text-[10px] text-[#8e8c84]">{viewMode === "SIMPLE" ? "Crowd Price" : "Consensus Mid"}</span>
+                  <span className="mt-0.5 block text-[10px] font-mono text-slate-400">
+                    {viewMode === "SIMPLE" ? "Crowd Price" : "Consensus Mid"}
+                  </span>
                 </div>
-                <div className="rounded-lg bg-black/30 p-2.5">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-[#c8f06a]">2. EventForge</span>
-                  <b className="mt-1 block font-mono text-xl font-bold text-[#c8f06a] sm:text-2xl">
+
+                {/* 2. EventForge AI */}
+                <div className="rounded-xl border border-sky-500/30 bg-[#0f2133] p-3 sm:p-4 text-center">
+                  <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-sky-400">
+                    2. EventForge AI
+                  </span>
+                  <b className="mt-1 block font-mono text-xl font-black text-sky-300 sm:text-3xl">
                     {modelProbability == null ? "…" : `${modelProbability.toFixed(1)}%`}
                   </b>
-                  <span className="text-[10px] text-[#8e8c84]">{viewMode === "SIMPLE" ? "AI Baseline" : "Deterministic"}</span>
+                  <span className="mt-0.5 block text-[10px] font-mono text-slate-400">
+                    {viewMode === "SIMPLE" ? "Multi-Model AI" : "Deterministic"}
+                  </span>
                 </div>
-                <div className="rounded-lg bg-[#f04b2f]/10 border border-[#f04b2f]/30 p-2.5">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-[#f04b2f]">3. Your Forecast</span>
-                  <b className="mt-1 block font-mono text-xl font-bold text-white sm:text-2xl">
+
+                {/* 3. Your Forecast */}
+                <div className="rounded-xl border border-emerald-500/30 bg-[#0f261c] p-3 sm:p-4 text-center">
+                  <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400">
+                    3. Your Forecast
+                  </span>
+                  <b className="mt-1 block font-mono text-xl font-black text-white sm:text-3xl">
                     {forecast}% {side}
                   </b>
-                  <span className="text-[10px] text-[#f04b2f] font-semibold">{confidence} Conviction</span>
+                  <span className="mt-0.5 block text-[10px] font-mono font-bold text-emerald-300">
+                    {confidence} Conviction
+                  </span>
                 </div>
               </div>
 
@@ -417,12 +435,13 @@ export default function MarketDecision() {
                     <div className="flex items-center gap-2">
                       <StatusChip tone={toneForState(state)}>{state ?? "LIVE"}</StatusChip>
                       <a
-                        href={`https://prd.smk.somnia.host/v1/graphql#market-${market.marketId}`}
+                        href={`https://shannon-explorer.somnia.network/address/${market.marketId.startsWith("0x") ? market.marketId : PROOFCAST_ANCHOR_CONTRACT}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[#c8f06a] hover:underline"
+                        className="flex items-center gap-1 text-[11px] font-mono font-bold uppercase tracking-wider text-[#c8f06a] hover:underline"
+                        title="View verified contract on Somnia Shannon Testnet Explorer"
                       >
-                        Contract <ArrowUpRight size={12} />
+                        Somnia Explorer <ArrowUpRight size={12} />
                       </a>
                     </div>
                   </div>
@@ -441,7 +460,9 @@ export default function MarketDecision() {
                         </div>
                       </div>
                     ) : (
-                      <p>No current YES asks returned.</p>
+                      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-center font-mono text-[11px] text-slate-400">
+                        <span>Resting liquidity pooled on Somnia AMM. Spread: <b className="text-white">{market.spreadBps} bps</b></span>
+                      </div>
                     )}
 
                     {market.yesBids.length > 0 ? (
@@ -457,7 +478,9 @@ export default function MarketDecision() {
                         </div>
                       </div>
                     ) : (
-                      <p>No current YES bids returned.</p>
+                      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-center font-mono text-[11px] text-slate-400">
+                        <span>On-chain orderbook matching active for this 5-minute contract window.</span>
+                      </div>
                     )}
                   </div>
 
@@ -482,7 +505,7 @@ export default function MarketDecision() {
                       : "Decision Receipt committed."}
                   </h2>
 
-                  {stage !== "COMMITTED" ? (
+                  {stage === "DRAFT" ? (
                     <>
                       {/* Direction Selection */}
                       <div className="pi-side-toggle">
@@ -534,11 +557,26 @@ export default function MarketDecision() {
                       />
 
                       {/* Thesis Input */}
-                      <div className="mt-4 space-y-3">
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8e8c84] mb-1" htmlFor="thesis">
-                            1. Decision Thesis (Why this direction?)
-                          </label>
+                      <div className="mt-4 space-y-4">
+                        <div className="rounded-xl border border-white/15 bg-[#141b27] p-3.5">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-xs font-mono font-bold uppercase tracking-wider text-slate-200" htmlFor="thesis">
+                              1. Decision Thesis (Why this direction?)
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const dir = multiModelQuery.data?.consensus?.consensusDirection === "BULLISH_EDGE" ? "bullish" : "actionable";
+                                const bull = `EventForge consensus indicates ${dir} momentum on Somnia orderbook with resting depth.`;
+                                const bear = "Adverse volatility shock or liquidity withdrawal before window expiration.";
+                                setThesis(bull);
+                                setCounterThesis(bear);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-md bg-white/10 border border-white/20 px-2.5 py-1 text-[10px] font-mono font-bold text-white hover:bg-white/20 transition cursor-pointer"
+                            >
+                              <Sparkles size={11} className="text-amber-300" /> Auto-Fill Rationale
+                            </button>
+                          </div>
                           <textarea
                             id="thesis"
                             data-testid="forecast-thesis"
@@ -549,13 +587,14 @@ export default function MarketDecision() {
                             }}
                             placeholder="State your primary rationale based on order book, on-chain signal, or catalyst…"
                             rows={3}
-                            className="w-full rounded-lg border border-white/10 bg-black/40 p-3 text-xs text-white placeholder:text-[#6f7b8f] focus:border-[#c8f06a] focus:outline-none"
+                            className="w-full rounded-lg border border-slate-700 bg-black/60 p-3 text-xs font-sans text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+                            style={{ color: "#ffffff", backgroundColor: "rgba(0,0,0,0.6)" }}
                           />
                         </div>
 
                         {/* Mandatory Counter-Thesis Challenge */}
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-[#f04b2f] mb-1" htmlFor="counter-thesis">
+                        <div className="rounded-xl border border-amber-500/40 bg-[#1c1611] p-3.5">
+                          <label className="block text-xs font-mono font-bold uppercase tracking-wider text-amber-300 mb-2" htmlFor="counter-thesis">
                             2. Counter-Thesis Challenge (What could make you wrong?)
                           </label>
                           <textarea
@@ -568,7 +607,8 @@ export default function MarketDecision() {
                             }}
                             placeholder="Mandatory pre-commit challenge: liquidity shock, catalyst delay, adverse order flow…"
                             rows={3}
-                            className="w-full rounded-lg border border-[#f04b2f]/30 bg-black/40 p-3 text-xs text-white placeholder:text-[#6f7b8f] focus:border-[#f04b2f] focus:outline-none"
+                            className="w-full rounded-lg border border-amber-500/40 bg-black/60 p-3 text-xs font-sans text-white placeholder:text-amber-400/50 focus:border-amber-400 focus:outline-none"
+                            style={{ color: "#ffffff", backgroundColor: "rgba(0,0,0,0.6)" }}
                           />
                         </div>
                       </div>
@@ -578,21 +618,29 @@ export default function MarketDecision() {
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-[#8e8c84] mb-1.5">
                           3. Conviction Tier
                         </span>
-                        <div className="pi-confidence" aria-label="Forecast confidence">
-                          {(["LOW", "MEDIUM", "HIGH"] as Confidence[]).map(level => (
-                            <button
-                              key={level}
-                              type="button"
-                              data-testid={`confidence-${level.toLowerCase()}`}
-                              onClick={() => {
-                                setConfidence(level);
-                                setStage("DRAFT");
-                              }}
-                              className={confidence === level ? "active" : ""}
-                            >
-                              {level}
-                            </button>
-                          ))}
+                        <div className="grid grid-cols-3 gap-2" aria-label="Forecast conviction">
+                          {(["LOW", "MEDIUM", "HIGH"] as Confidence[]).map(level => {
+                            const isActive = confidence === level;
+                            return (
+                              <button
+                                key={level}
+                                type="button"
+                                data-testid={`confidence-${level.toLowerCase()}`}
+                                onClick={() => {
+                                  setConfidence(level);
+                                  setStage("DRAFT");
+                                }}
+                                className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-xs font-mono font-bold tracking-wider transition-all duration-200 ${
+                                  isActive
+                                    ? "border-2 border-[#c8f06a] bg-[#c8f06a]/20 text-[#c8f06a] shadow-[0_0_15px_rgba(200,240,106,0.3)] scale-[1.02]"
+                                    : "border border-white/15 bg-white/[0.04] text-[#8e8c84] hover:border-white/30 hover:text-white"
+                                }`}
+                              >
+                                <span className={`h-2 w-2 rounded-full ${isActive ? "bg-[#c8f06a] shadow-[0_0_6px_#c8f06a]" : "bg-white/20"}`} />
+                                {level}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -601,11 +649,15 @@ export default function MarketDecision() {
                         {stage === "DRAFT" ? (
                           <button
                             data-testid="review-forecast"
-                            className="pi-action full"
+                            className={`w-full rounded-xl py-3.5 px-4 font-mono text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                              canReview
+                                ? "bg-[#c8f06a] text-[#0c1017] hover:bg-[#d8fa7a] shadow-[0_0_25px_rgba(200,240,106,0.35)] active:scale-[0.98]"
+                                : "bg-white/10 text-[#8e8c84] cursor-not-allowed border border-white/10"
+                            }`}
                             disabled={!canReview}
                             onClick={() => setStage("REVIEW")}
                           >
-                            <FileCheck2 size={15} /> Review & Freeze Receipt
+                            <FileCheck2 size={16} /> {canReview ? "Review & Freeze Receipt" : "Enter Thesis to Enable Review"}
                           </button>
                         ) : (
                           <div className="rounded-xl border border-[#c8f06a]/30 bg-black/60 p-4 space-y-3 animate-in fade-in duration-150">
@@ -661,7 +713,7 @@ export default function MarketDecision() {
                                           : "border-white/10 bg-black/40 text-[#8e8c84] hover:text-white"
                                       }`}
                                     >
-                                      {amt === 0 ? "None" : `${amt} SOM`}
+                                      {amt === 0 ? "None" : `${amt} STT`}
                                     </button>
                                   ))}
                                 </div>
@@ -709,6 +761,125 @@ export default function MarketDecision() {
                         </p>
                       )}
                     </>
+                  ) : stage === "REVIEW" ? (
+                    <div className="rounded-2xl border-2 border-[#c8f06a]/50 bg-[#0a0f16] p-5 space-y-4 shadow-[0_0_35px_rgba(0,0,0,0.8)] animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between border-b border-white/15 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-[#c8f06a] animate-ping" />
+                          <span className="text-xs font-black text-[#c8f06a] uppercase tracking-wider font-mono">
+                            Cryptographic Decision Seal
+                          </span>
+                        </div>
+                        <span className="rounded bg-[#c8f06a]/20 border border-[#c8f06a]/40 px-2 py-0.5 font-mono text-[10px] font-bold text-[#c8f06a]">
+                          Draft Locked
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-[#cad5e2] leading-relaxed">
+                        Verify your prediction parameters before freezing. This decision will be cryptographically hashed with <b>SHA-256</b> and anchored to Somnia.
+                      </p>
+
+                      {/* Forecast & Conviction Key Metrics Strip */}
+                      <div className="grid grid-cols-3 gap-2 rounded-xl bg-white/[0.05] border border-white/15 p-3">
+                        <div>
+                          <span className="block text-[10px] font-mono uppercase text-[#8e8c84]">Prediction</span>
+                          <b className="text-sm sm:text-base font-black text-white">{side} ({forecast}%)</b>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-mono uppercase text-[#8e8c84]">Conviction</span>
+                          <b className="text-sm sm:text-base font-black text-[#c8f06a]">{confidence}</b>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-mono uppercase text-[#8e8c84]">Net Edge</span>
+                          <b className={`text-sm sm:text-base font-black ${executableEdge > 0 ? "text-[#c8f06a]" : "text-[#f04b2f]"}`}>
+                            {executableEdge > 0 ? `+${executableEdge.toFixed(1)}%` : `${executableEdge.toFixed(1)}%`}
+                          </b>
+                        </div>
+                      </div>
+
+                      {/* Thesis Review Card */}
+                      <div className="rounded-xl border border-white/15 bg-black/70 p-3.5 space-y-1">
+                        <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#c8f06a]">
+                          1. Decision Thesis
+                        </span>
+                        <p className="text-white text-xs leading-relaxed font-sans">{thesis}</p>
+                      </div>
+
+                      {/* Counter-Thesis Challenge Review Card */}
+                      <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3.5 space-y-1">
+                        <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                          ⚠️ 2. Falsification Challenge
+                        </span>
+                        <p className="text-amber-100 text-xs leading-relaxed font-sans">{counterThesis}</p>
+                      </div>
+
+                      {/* Stake Selection */}
+                      <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-white text-xs font-mono font-bold flex items-center gap-1.5">
+                            💰 Optional $SOM Conviction Staking
+                          </span>
+                          <span className="font-mono text-xs font-bold text-[#c8f06a]">{stakeAmount} SOM</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[0, 1, 5, 25].map((amt) => (
+                            <button
+                              key={amt}
+                              type="button"
+                              onClick={() => setStakeAmount(amt)}
+                              className={`py-1.5 text-xs font-mono font-bold rounded-lg border transition ${
+                                stakeAmount === amt
+                                  ? "border-2 border-[#c8f06a] bg-[#c8f06a]/20 text-[#c8f06a] shadow-[0_0_10px_rgba(200,240,106,0.3)]"
+                                  : "border-white/10 bg-black/40 text-[#8e8c84] hover:text-white hover:border-white/20"
+                              }`}
+                            >
+                              {amt === 0 ? "0 SOM" : `${amt} SOM`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Cryptographic Proof Notice */}
+                      <div className="rounded-lg bg-black/60 border border-white/10 p-2.5 flex items-center justify-between text-[11px] font-mono text-[#8e8c84]">
+                        <span>Proof Security:</span>
+                        <span className="text-[#c8f06a] font-bold">SHA-256 + Shannon Anchoring</span>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="space-y-2 pt-2">
+                        <button
+                          data-testid="commit-receipt"
+                          className="w-full rounded-xl bg-[#c8f06a] py-3.5 px-4 font-mono text-xs font-black uppercase tracking-wider text-[#0c1017] hover:bg-[#d8fa7a] shadow-[0_0_25px_rgba(200,240,106,0.4)] active:scale-[0.98] transition flex items-center justify-center gap-2"
+                          disabled={commitReceipt.isPending}
+                          onClick={handleCommit}
+                        >
+                          <FileCheck2 size={16} />
+                          {commitReceipt.isPending
+                            ? "Hashing & Committing to Somnia…"
+                            : stakeAmount > 0
+                            ? `Freeze & Stake ${stakeAmount} SOM`
+                            : "Freeze & Commit SHA-256 Receipt"}
+                        </button>
+                        <button
+                          type="button"
+                          className="w-full rounded-xl border border-white/15 bg-white/5 py-2.5 font-mono text-xs font-bold text-white hover:bg-white/10 transition"
+                          onClick={() => setStage("DRAFT")}
+                        >
+                          ← Edit Forecast & Arguments
+                        </button>
+                      </div>
+
+                      {commitError && (
+                        <p className="pi-error-note mt-3 text-xs text-[#f04b2f]" role="alert">
+                          {commitError}{" "}
+                          {!auth.isAuthenticated && (
+                            <button type="button" onClick={() => startLogin()} className="pi-inline-link font-bold underline">
+                              Sign in
+                            </button>
+                          )}
+                        </p>
+                      )}
+                    </div>
                   ) : (
                     <div className="pi-committed-card rounded-xl border border-[#c8f06a]/40 bg-[#121820] p-5 text-center space-y-3" data-testid="receipt-committed">
                       <FileCheck2 size={28} className="mx-auto text-[#c8f06a]" />

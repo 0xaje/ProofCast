@@ -104,8 +104,8 @@ export const appRouter = router({
   dreamdex: router({
     /** Public, read-only Event Contract snapshot. It never receives wallet or signer material. */
     snapshot: publicProcedure
-      .input(z.object({ limit: z.number().int().min(1).max(6).optional() }).nullish())
-      .query(({ input }) => getDreamDexSnapshot(input?.limit ?? 3)),
+      .input(z.object({ limit: z.number().int().min(1).max(12).optional() }).nullish())
+      .query(({ input }) => getDreamDexSnapshot(input?.limit ?? 6)),
   }),
 
   eventforge: router({
