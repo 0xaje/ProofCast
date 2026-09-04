@@ -200,6 +200,14 @@ export function ModelComparisonSelector({
           </div>
         </div>
       )}
+
+      {/* Strict Model Invariance Security Callout */}
+      <div className="mt-3 flex items-center gap-2 rounded-lg border border-sky-500/25 bg-sky-950/40 p-2.5 text-[11px] text-slate-300">
+        <Shield size={14} className="text-[#38bdf8] shrink-0" />
+        <span>
+          <b className="text-white">Strict Architectural Invariant:</b> Layer A deterministic order-book math cannot be altered or overridden by LLMs.
+        </span>
+      </div>
     </div>
   );
 }

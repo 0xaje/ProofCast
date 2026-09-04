@@ -489,6 +489,16 @@ export default function MarketDecision() {
                     Executable ask: <b>{bestAsk.toFixed(1)}%</b> · Executable bid: <b>{bestBid.toFixed(1)}%</b> · Spread: <b>{market.spreadBps ?? 0} bps</b>
                   </div>
                 </div>
+
+                {/* 2. EVENTFORGE DUAL-LAYER INTELLIGENCE & REASONING DRAWER */}
+                <div className={mobileTab === "MARKET" ? "hidden lg:block" : ""}>
+                  <ModelComparisonSelector
+                    analysis={multiModelQuery.data}
+                    selectedModelId={selectedModelId}
+                    onSelectModel={setSelectedModelId}
+                    isLoading={multiModelQuery.isLoading}
+                  />
+                </div>
               </div>
 
               {/* RIGHT COLUMN: DECISION COMMIT TERMINAL */}
