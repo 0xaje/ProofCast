@@ -253,6 +253,7 @@ function seedMemoryReceiptsIfEmpty() {
       userId: 1,
       forecastId: 1,
       marketSnapshotId: 1,
+      commitmentHash: "0x4a8c9b2e1f0d3a7c6e5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d",
       version: 1,
       modelProbabilityBps: 6380,
       modelConfidence: "HIGH",
@@ -441,6 +442,7 @@ export async function createDecisionReceipt(
       userId,
       forecastId: newId,
       marketSnapshotId: newId,
+      commitmentHash,
       version: 1,
       modelProbabilityBps: modelOutput.modelProbabilityBps,
       modelConfidence: modelOutput.modelConfidence,
@@ -531,6 +533,10 @@ export async function anchorDecisionReceipt(
     found.receipt.anchorTxHash = anchorTxHash.trim();
     found.receipt.anchorAddress = anchorAddress.trim();
     found.receipt.anchorTimestamp = new Date();
+    if (found.receipt.stakeAmountWei) {
+      found.receipt.stakeTxHash = anchorTxHash.trim();
+      found.receipt.stakeStatus = "STAKED";
+    }
     return await getDecisionReceipt(userId, receiptId);
   }
   const existing = await assertOwnedReceipt(db, userId, receiptId);

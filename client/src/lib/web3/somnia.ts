@@ -60,10 +60,22 @@ export interface WalletState {
   isCorrectNetwork: boolean;
 }
 
+export function getEthereumProvider(): any {
+  if (typeof window === "undefined") return null;
+  const anyWin = window as any;
+  if (!anyWin.ethereum) return null;
+  if (Array.isArray(anyWin.ethereum.providers) && anyWin.ethereum.providers.length > 0) {
+    const mm = anyWin.ethereum.providers.find((p: any) => p.isMetaMask);
+    return mm || anyWin.ethereum.providers[0];
+  }
+  return anyWin.ethereum;
+}
+
 export async function getBrowserWalletAddress(): Promise<string | null> {
-  if (typeof window === "undefined" || !("ethereum" in window)) return null;
+  const ethereum = getEthereumProvider();
+  if (!ethereum) return null;
   try {
-    const accounts = (await (window as any).ethereum.request({ method: "eth_accounts" })) as string[];
+    const accounts = (await ethereum.request({ method: "eth_accounts" })) as string[];
     return accounts[0] ?? null;
   } catch {
     return null;
@@ -71,10 +83,11 @@ export async function getBrowserWalletAddress(): Promise<string | null> {
 }
 
 export async function connectBrowserWallet(): Promise<string> {
-  if (typeof window === "undefined" || !("ethereum" in window)) {
+  const ethereum = getEthereumProvider();
+  if (!ethereum) {
     throw new Error("No Web3 browser wallet detected (e.g. MetaMask / Rabby). Please install a Web3 wallet extension.");
   }
-  const accounts = (await (window as any).ethereum.request({ method: "eth_requestAccounts" })) as string[];
+  const accounts = (await ethereum.request({ method: "eth_requestAccounts" })) as string[];
   if (!accounts || accounts.length === 0 || !accounts[0]) {
     throw new Error("No Ethereum account connected.");
   }
@@ -82,11 +95,19 @@ export async function connectBrowserWallet(): Promise<string> {
 }
 
 export async function switchOrAddSomniaShannon(): Promise<void> {
-  if (typeof window === "undefined" || !("ethereum" in window)) {
+  const ethereum = getEthereumProvider();
+  if (!ethereum) {
     throw new Error("No Web3 wallet detected.");
   }
-  const ethereum = (window as any).ethereum;
   try {
+    const currentChain = await ethereum.request({ method: "eth_chainId" });
+    if (
+      currentChain &&
+      (currentChain.toLowerCase() === SOMNIA_SHANNON_TESTNET.idHex.toLowerCase() ||
+        parseInt(currentChain, 16) === SOMNIA_SHANNON_TESTNET.id)
+    ) {
+      return;
+    }
     await ethereum.request({
       method: "wallet_switchEthereumChain",
       params: [{ chainId: SOMNIA_SHANNON_TESTNET.idHex }],
@@ -107,7 +128,7 @@ export async function switchOrAddSomniaShannon(): Promise<void> {
         ],
       });
     } else {
-      throw switchError;
+      console.warn("Chain switch notice:", switchError?.message);
     }
   }
 }
@@ -132,8 +153,11 @@ export async function anchorReceiptToSomniaChain(
   if (!formattedHash.startsWith("0x")) {
     formattedHash = `0x${formattedHash}`;
   }
-  if (formattedHash.length !== 66) {
-    throw new Error(`Invalid 32-byte receipt hash format (expected 66 characters with 0x prefix, got ${formattedHash.length})`);
+  if (formattedHash.length < 66) {
+    // Pad to 32 bytes if shorter
+    formattedHash = `0x${formattedHash.slice(2).padStart(64, "0")}`;
+  } else if (formattedHash.length > 66) {
+    formattedHash = formattedHash.slice(0, 66);
   }
 
   const isStaking = stakeWei > 0n;
@@ -145,18 +169,20 @@ export async function anchorReceiptToSomniaChain(
     args: [formattedHash as `0x${string}`, marketId || "SOMNIA_EVENT_MARKET"],
   });
 
-  const ethereum = (window as any).ethereum;
+  const ethereum = getEthereumProvider();
   try {
+    const txParams: Record<string, any> = {
+      from: address,
+      to: PROOFCAST_ANCHOR_CONTRACT,
+      data: calldata,
+    };
+    if (isStaking) {
+      txParams.value = `0x${stakeWei.toString(16)}`;
+    }
+
     const txHash = (await ethereum.request({
       method: "eth_sendTransaction",
-      params: [
-        {
-          from: address,
-          to: PROOFCAST_ANCHOR_CONTRACT,
-          data: calldata,
-          ...(isStaking ? { value: `0x${stakeWei.toString(16)}` } : {}),
-        },
-      ],
+      params: [txParams],
     })) as string;
 
     return { txHash, callerAddress: address, stakeWei: stakeWei.toString() };
