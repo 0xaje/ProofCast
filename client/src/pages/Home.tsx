@@ -176,7 +176,7 @@ export default function Home() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md border border-[#c8f06a]/30 bg-[#c8f06a]/10 px-2.5 py-1 text-xs font-mono font-bold text-[#c8f06a]">
-              🟢 Somnia DreamDEX Active ({filteredMarkets.length} Live)
+              Somnia DreamDEX Active ({filteredMarkets.length} Live)
             </span>
             <a
               href="#completed-proofs"

@@ -136,7 +136,7 @@ export function ProofCardModal({ isOpen, onClose, receipt }: ProofCardModalProps
     ctx.fillStyle = isAnchored ? "#d7f36b" : "#8b96a8";
     ctx.font = "bold 11px monospace";
     ctx.fillText(
-      isAnchored ? "⚡ SOMNIA SHANNON ON-CHAIN ANCHOR: VERIFIED" : "○ UNANCHORED DRAFT RECEIPT",
+      isAnchored ? "SOMNIA SHANNON ON-CHAIN ANCHOR: VERIFIED" : "○ UNANCHORED DRAFT RECEIPT",
       45,
       256
     );
@@ -168,7 +168,7 @@ export function ProofCardModal({ isOpen, onClose, receipt }: ProofCardModalProps
     toast.success("Proof Badge image downloaded!");
   };
 
-  const shareText = `I committed an immutable forecast on @ProofCast with @Somnia_Network DreamDEX Event Contracts!\n\nReceipt #RC-${String(receipt.id).padStart(5, "0")}: ${probPct}% ${forecast?.direction || "UP"}\n${isAnchored ? "⚡ Anchored On-Chain (Somnia Shannon)" : ""}\n\nInspect verified proof:`;
+  const shareText = `I committed an immutable forecast on @ProofCast with @Somnia_Network DreamDEX Event Contracts!\n\nReceipt #RC-${String(receipt.id).padStart(5, "0")}: ${probPct}% ${forecast?.direction || "UP"}\n${isAnchored ? "Anchored On-Chain (Somnia Shannon)" : ""}\n\nInspect verified proof:`;
 
   const shareToTwitter = () => {
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.origin + "/proof")}`;

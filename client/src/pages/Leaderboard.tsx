@@ -369,7 +369,7 @@ export default function Leaderboard() {
                                   : "border border-amber-700/40 bg-amber-700/20 text-amber-500"
                               }`}
                             >
-                              🛡️ {entry.forecasterBadge.title}
+                              {entry.forecasterBadge.title}
                             </span>
                           )}
                           {entry.badges?.map((b) => renderBadge(b))}

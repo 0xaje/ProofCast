@@ -233,7 +233,7 @@ function findBestLiveMarket(
     setThesis(pick.thesis);
     setCounterThesis(pick.counter);
     setStage("DRAFT");
-    toast.success(`⚡ Auto-filled from EventForge AI (${pick.source})!`);
+    toast.success(`Auto-filled from EventForge AI (${pick.source})!`);
   };
 
   // True executable price calculation
@@ -338,7 +338,7 @@ function findBestLiveMarket(
                   viewMode === "SIMPLE" ? "bg-[#c8f06a] text-[#151515] shadow" : "text-[#8e8c84] hover:text-white"
                 }`}
               >
-                ⚡ Simple
+                Simple
               </button>
               <button
                 type="button"
@@ -347,7 +347,7 @@ function findBestLiveMarket(
                   viewMode === "QUANT" ? "bg-white/20 text-white shadow" : "text-[#8e8c84] hover:text-white"
                 }`}
               >
-                📊 Quant
+                Quant
               </button>
             </div>
             <StatusChip tone={qualityTone(marketQuality?.state)}>
@@ -699,7 +699,7 @@ function findBestLiveMarket(
                               onClick={handleAutoFill}
                               className="inline-flex items-center gap-1.5 rounded-md bg-[#c8f06a]/15 border border-[#c8f06a]/30 px-2.5 py-1 text-[10px] font-mono font-bold text-[#c8f06a] hover:bg-[#c8f06a]/25 transition cursor-pointer"
                             >
-                              <Sparkles size={11} className="text-amber-300" /> ⚡ Auto-Fill from EventForge AI
+                              <Sparkles size={11} className="text-amber-300" /> Auto-Fill from EventForge AI
                             </button>
                           </div>
                           <textarea
@@ -772,45 +772,6 @@ function findBestLiveMarket(
                               >
                                 <span className={`h-2 w-2 rounded-full ${isActive ? "bg-[#c8f06a] shadow-[0_0_6px_#c8f06a]" : "bg-white/20"}`} />
                                 {level}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Stake Selection */}
-                      <div className="mt-4 rounded-xl border border-white/15 bg-[#141b27] p-3.5 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-mono font-bold uppercase tracking-wider text-[#c8f06a] flex items-center gap-1.5">
-                            💰 Stake STT (Optional Conviction Pool)
-                          </label>
-                          <span className="font-mono text-xs font-bold text-white">
-                            {stakeAmount === 0 ? "None" : `${stakeAmount} STT`}
-                          </span>
-                        </div>
-                        <p className="text-[11px] leading-snug text-[#8e8c84]">
-                          Transferred on-chain when you anchor this receipt on Somnia — not at commit.
-                        </p>
-                        <div className="grid grid-cols-4 gap-2">
-                          {[
-                            { label: "None", value: 0 },
-                            { label: "1 STT", value: 1 },
-                            { label: "5 STT", value: 5 },
-                            { label: "25 STT", value: 25 },
-                          ].map(opt => {
-                            const isSelected = stakeAmount === opt.value;
-                            return (
-                              <button
-                                key={opt.label}
-                                type="button"
-                                onClick={() => setStakeAmount(opt.value)}
-                                className={`py-2 text-xs font-mono font-bold rounded-xl border transition-all duration-150 ${
-                                  isSelected
-                                    ? "border-2 border-[#c8f06a] bg-[#c8f06a]/20 text-[#c8f06a] shadow-[0_0_12px_rgba(200,240,106,0.35)] scale-[1.02]"
-                                    : "border-white/10 bg-black/40 text-[#8e8c84] hover:text-white hover:border-white/25"
-                                }`}
-                              >
-                                {opt.label}
                               </button>
                             );
                           })}
@@ -891,7 +852,8 @@ function findBestLiveMarket(
                       {/* Counter-Thesis Challenge Review Card */}
                       <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3.5 space-y-1">
                         <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                          ⚠️ 2. Falsification Challenge
+                          <ShieldAlert size={12} className="text-amber-400" />
+                          2. Falsification Challenge
                         </span>
                         <p className="text-amber-100 text-xs leading-relaxed font-sans">{counterThesis}</p>
                       </div>
@@ -899,33 +861,42 @@ function findBestLiveMarket(
                       {/* Stake Selection */}
                       <div className="rounded-xl border border-white/15 bg-white/[0.04] p-3 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-white text-xs font-mono font-bold flex items-center gap-1.5">
-                            💰 Stake STT (Optional Conviction Pool)
-                          </span>
+                          <label htmlFor="stake-amount-input" className="text-white text-xs font-mono font-bold">
+                            Stake STT (Optional Conviction Pool)
+                          </label>
                           <span className="font-mono text-xs font-bold text-[#c8f06a]">
-                            {stakeAmount === 0 ? "None" : `${stakeAmount} STT`}
+                            {stakeAmount > 0 ? `${stakeAmount} STT` : "0 STT (No Stake)"}
                           </span>
                         </div>
-                        <div className="grid grid-cols-4 gap-2">
-                          {[
-                            { label: "None", value: 0 },
-                            { label: "1 STT", value: 1 },
-                            { label: "5 STT", value: 5 },
-                            { label: "25 STT", value: 25 },
-                          ].map((opt) => (
-                            <button
-                              key={opt.label}
-                              type="button"
-                              onClick={() => setStakeAmount(opt.value)}
-                              className={`py-1.5 text-xs font-mono font-bold rounded-lg border transition ${
-                                stakeAmount === opt.value
-                                  ? "border-2 border-[#c8f06a] bg-[#c8f06a]/20 text-[#c8f06a] shadow-[0_0_10px_rgba(200,240,106,0.3)]"
-                                  : "border-white/10 bg-black/40 text-[#8e8c84] hover:text-white hover:border-white/20"
-                              }`}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
+                        <p className="text-[10px] leading-snug text-[#8b96a8]">
+                          Enter any custom STT amount. Transferred on-chain when you anchor this receipt on Somnia — not at commit.
+                        </p>
+                        <div className="relative">
+                          <input
+                            id="stake-amount-input"
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={stakeAmount === 0 ? "" : stakeAmount}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              setStakeAmount(isNaN(val) || val < 0 ? 0 : val);
+                            }}
+                            placeholder="Enter STT amount (optional)"
+                            className="w-full rounded-xl border border-white/15 bg-black/60 px-3.5 py-2.5 font-mono text-xs text-white placeholder:text-[#6f7b8f] focus:border-[#c8f06a] focus:outline-none"
+                          />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs font-mono">
+                            <span className="font-bold text-white/80">STT</span>
+                            {stakeAmount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setStakeAmount(0)}
+                                className="text-[10px] text-white/50 hover:text-white underline"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
