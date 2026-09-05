@@ -7,6 +7,7 @@
 
 [![Live App](https://img.shields.io/badge/Live_App-proofcast.onrender.com-c8f06a?style=for-the-badge&logo=render&logoColor=080b10)](https://proofcast.onrender.com)
 [![Demo Video](https://img.shields.io/badge/Demo_Video-YouTube-ff0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/U1dPAt1yQfw)
+[![X Thread](https://img.shields.io/badge/X-@ProofCast__-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/ProofCast_/status/2096377990275875050)
 [![Somnia Network](https://img.shields.io/badge/Network-Somnia_Shannon_Testnet-c8f06a?style=for-the-badge&logo=ethereum&logoColor=080b10)](https://shannon-explorer.somnia.network)
 [![Smart Contract](https://img.shields.io/badge/Solidity-0.8.20_Verified-f04b2f?style=for-the-badge&logo=solidity&logoColor=white)](contracts/ProofCastAnchor.sol)
 [![DreamDEX](https://img.shields.io/badge/DEX-DreamDEX_Event_Contracts-38bdf8?style=for-the-badge&logo=polkadot&logoColor=white)](https://docs.dreamdex.io)
@@ -365,6 +366,7 @@ pnpm build
 ## 10. Hackathon Submission & Resources
 
 * **Official Video Walkthrough**: [https://youtu.be/U1dPAt1yQfw](https://youtu.be/U1dPAt1yQfw)
+* **Official X (Twitter) Announcement**: [https://x.com/ProofCast_/status/2096377990275875050](https://x.com/ProofCast_/status/2096377990275875050)
 * **Live Web Application**: [https://proofcast.onrender.com](https://proofcast.onrender.com)
 * **Live Submission Guide**: [SUBMISSION_DEMO_GUIDE.md](SUBMISSION_DEMO_GUIDE.md)
 * **System Audit**: [LIVE_SYSTEM_VERIFICATION.md](LIVE_SYSTEM_VERIFICATION.md)
