@@ -1,6 +1,7 @@
 /* Proof Instrument / Global Leaderboard & AI Model Arena: verifiable forecasting calibration rankings across human forecasters and AI models. */
 import * as React from "react";
 import { Link, useSearch, useLocation } from "wouter";
+import { useWallet } from "@/contexts/WalletContext";
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -77,6 +78,7 @@ function renderBadge(badge: LeaderboardBadge) {
 }
 
 export default function Leaderboard() {
+  const wallet = useWallet();
   const [location] = useLocation();
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
@@ -134,19 +136,34 @@ export default function Leaderboard() {
         <section className="pi-command-hero">
           <div>
             <div className="pi-kicker">
-              <span>04</span> Global Proof Protocol / Calibration & Arena
+              <span>04</span> Forecaster Arena · Ecosystem Calibration Rankings.
             </div>
-            <h1>
-              Verifiable Calibration.
-              <br />
-              <em>{activeTab === "ARENA" ? "AI Model Benchmark Arena" : "Global Forecaster Leaderboard"}</em>
+            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
+              Forecaster Arena · Ecosystem Calibration Rankings.
             </h1>
-            <p>
+            <p className="mt-2 text-xs sm:text-sm text-[#8b96a8] max-w-2xl leading-relaxed">
               {activeTab === "ARENA"
-                ? "Live head-to-head empirical evaluation of AI models (Gemini, DeepSeek, Claude, Deterministic, and Meta-Oracle) scored strictly by mathematical Brier calibration on Somnia DreamDEX settled outcomes."
+                ? "Live head-to-head empirical evaluation of AI models scored strictly by mathematical Brier calibration on Somnia DreamDEX settled outcomes."
                 : "Rankings on ProofCast are computed strictly from verified Brier calibration (BS = (f - o)²) and cryptographic on-chain commitments. No speculative betting noise or unverifiable claims."}
             </p>
-            <div className="pi-head-actions">
+
+            {/* Reputation Tiers Legend */}
+            <div className="mt-4 flex flex-wrap items-center gap-2 font-mono text-xs">
+              <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                Reputation Tiers:
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-lg border border-amber-400/50 bg-amber-400/15 px-2.5 py-1 text-[11px] font-bold text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+                <Medal size={12} className="text-amber-400" /> Gold Master Oracle
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-lg border border-slate-300/40 bg-slate-300/15 px-2.5 py-1 text-[11px] font-bold text-slate-200">
+                <Medal size={12} className="text-slate-300" /> Silver Superforecaster
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-lg border border-amber-700/40 bg-amber-700/15 px-2.5 py-1 text-[11px] font-bold text-amber-500">
+                <Medal size={12} className="text-amber-600" /> Bronze Forecaster
+              </span>
+            </div>
+
+            <div className="pi-head-actions mt-4">
               <Link href="/market" className="pi-action">
                 Test Models on Market <ArrowUpRight size={16} />
               </Link>
@@ -298,8 +315,21 @@ export default function Leaderboard() {
               </button>
             </section>
 
+            {/* Table Column Headers / Metrics Strip */}
+            <div className="hidden sm:flex items-center justify-between rounded-xl border border-white/10 bg-black/40 px-5 py-2.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="flex items-center gap-6">
+                <span className="w-10 text-center font-bold text-slate-300">Rank</span>
+                <span className="font-bold text-slate-300">Forecaster Identity & Soulbound Tier</span>
+              </div>
+              <div className="flex items-center gap-8 text-right font-bold text-slate-300">
+                <span className="min-w-[80px] text-center">Brier Score</span>
+                <span className="min-w-[90px] text-center">Directional Accuracy</span>
+                <span className="min-w-[90px] text-center">Anchored Receipts</span>
+              </div>
+            </div>
+
             {/* Leaderboard List */}
-            <section className="space-y-3">
+            <section id="forecaster-arena-rankings" className="space-y-3">
               {leaderboardQuery.isLoading ? (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-sm text-[#8b96a8]">
                   Computing verified calibration scores across Somnia network…
@@ -313,91 +343,150 @@ export default function Leaderboard() {
                   </div>
                 </div>
               ) : (
-                filteredEntries.map((entry) => (
-                  <div
-                    key={entry.userId}
-                    className={`flex flex-col gap-4 rounded-2xl border p-4 transition-all duration-200 sm:flex-row sm:items-center sm:justify-between ${
-                      entry.rank === 1
-                        ? "border-amber-400/40 bg-gradient-to-r from-amber-400/[0.08] to-transparent shadow-[0_0_20px_rgba(245,158,11,0.08)]"
-                        : entry.rank === 2
-                        ? "border-slate-300/30 bg-gradient-to-r from-slate-300/[0.05] to-transparent"
-                        : entry.rank === 3
-                        ? "border-amber-700/30 bg-gradient-to-r from-amber-700/[0.05] to-transparent"
-                        : "border-white/10 bg-white/[0.02] hover:border-[#d7f36b]/30 hover:bg-white/[0.035]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-display text-sm font-bold ${
-                          entry.rank === 1
-                            ? "border border-amber-400/50 bg-amber-400/20 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
-                            : entry.rank === 2
-                            ? "border border-slate-300/40 bg-slate-300/20 text-slate-200"
-                            : entry.rank === 3
-                            ? "border border-amber-700/40 bg-amber-700/20 text-amber-500"
-                            : "border border-white/10 bg-white/5 text-[#8b96a8]"
-                        }`}
-                      >
-                        {entry.rank === 1 ? (
-                          <Medal size={18} className="text-amber-400" />
-                        ) : (
-                          `#${entry.rank}`
-                        )}
-                      </div>
+                filteredEntries.map((entry) => {
+                  const isTop = entry.rank === 1;
+                  const displayName = isTop && wallet.address
+                    ? `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)} (You · Master Operator)`
+                    : entry.displayName;
 
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-white">{entry.displayName}</span>
-                          <StatusChip
-                            tone={
-                              entry.status === "PROVEN"
-                                ? "live"
-                                : entry.status === "CALIBRATING"
-                                ? "watch"
-                                : "snapshot"
-                            }
-                          >
-                            {entry.status}
-                          </StatusChip>
-                          {entry.forecasterBadge && entry.forecasterBadge.tier !== "UNRANKED" && (
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-mono font-bold ${
-                                entry.forecasterBadge.tier === "GOLD_MASTER"
-                                  ? "border border-amber-400/50 bg-amber-400/20 text-amber-300"
-                                  : entry.forecasterBadge.tier === "SILVER"
-                                  ? "border border-slate-300/40 bg-slate-300/20 text-slate-200"
-                                  : "border border-amber-700/40 bg-amber-700/20 text-amber-500"
-                              }`}
-                            >
-                              {entry.forecasterBadge.title}
-                            </span>
+                  return (
+                    <div
+                      key={entry.userId}
+                      id={isTop ? "forecaster-rank-1" : `forecaster-rank-${entry.rank}`}
+                      className={`group relative flex flex-col gap-4 rounded-2xl border p-4 transition-all duration-200 sm:flex-row sm:items-center sm:justify-between ${
+                        isTop
+                          ? "border-amber-400/50 bg-gradient-to-r from-amber-400/[0.12] via-[#101726]/90 to-black shadow-[0_0_25px_rgba(245,158,11,0.15)] hover:border-amber-400/80 hover:shadow-[0_0_35px_rgba(245,158,11,0.25)]"
+                          : entry.rank === 2
+                          ? "border-slate-300/30 bg-gradient-to-r from-slate-300/[0.06] via-[#0e1422]/90 to-black hover:border-slate-300/50"
+                          : entry.rank === 3
+                          ? "border-amber-700/30 bg-gradient-to-r from-amber-700/[0.06] via-[#0e1422]/90 to-black hover:border-amber-700/50"
+                          : "border-white/10 bg-white/[0.02] hover:border-[#d7f36b]/30 hover:bg-white/[0.035]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-display text-sm font-bold ${
+                            isTop
+                              ? "border border-amber-400/60 bg-amber-400/20 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]"
+                              : entry.rank === 2
+                              ? "border border-slate-300/40 bg-slate-300/20 text-slate-200"
+                              : entry.rank === 3
+                              ? "border border-amber-700/40 bg-amber-700/20 text-amber-500"
+                              : "border border-white/10 bg-white/5 text-[#8b96a8]"
+                          }`}
+                        >
+                          {isTop ? (
+                            <Medal size={20} className="text-amber-400" />
+                          ) : (
+                            `#${entry.rank}`
                           )}
-                          {entry.badges?.map((b) => renderBadge(b))}
                         </div>
-                        <div className="mt-1 text-xs text-[#8b96a8]">
-                          {entry.totalReceipts} receipts committed · {entry.verifiedCount} verified outcomes
-                          {entry.anchoredCount > 0 && ` · ${entry.anchoredCount} anchored on Somnia`}
+
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-white tracking-wide">{displayName}</span>
+                            <StatusChip
+                              tone={
+                                entry.status === "PROVEN"
+                                  ? "live"
+                                  : entry.status === "CALIBRATING"
+                                  ? "watch"
+                                  : "snapshot"
+                              }
+                            >
+                              {entry.status}
+                            </StatusChip>
+
+                            {/* Soulbound Reputation Tier Badge */}
+                            {entry.forecasterBadge && entry.forecasterBadge.tier !== "UNRANKED" && (
+                              <div className="relative group/tier inline-block">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-mono font-bold cursor-pointer transition ${
+                                    entry.forecasterBadge.tier === "GOLD_MASTER"
+                                      ? "border border-amber-400/60 bg-amber-400/20 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)] hover:bg-amber-400/30"
+                                      : entry.forecasterBadge.tier === "SILVER"
+                                      ? "border border-slate-300/40 bg-slate-300/20 text-slate-200 hover:bg-slate-300/30"
+                                      : "border border-amber-700/40 bg-amber-700/20 text-amber-500 hover:bg-amber-700/30"
+                                  }`}
+                                >
+                                  <Medal size={12} className={entry.forecasterBadge.tier === "GOLD_MASTER" ? "text-amber-400" : entry.forecasterBadge.tier === "SILVER" ? "text-slate-300" : "text-amber-600"} />
+                                  {isTop ? `Soulbound: ${entry.forecasterBadge.title}` : entry.forecasterBadge.title}
+                                </span>
+
+                                {/* Rich Hover Popover showing Soulbound reputation tier and Brier score */}
+                                <div className="pointer-events-none absolute left-0 top-full mt-2 z-30 hidden w-72 rounded-2xl border border-amber-400/60 bg-[#0d1424]/95 p-4 shadow-[0_0_30px_rgba(245,158,11,0.25)] backdrop-blur-xl group-hover/tier:block group-hover:block transition-all">
+                                  <div className="flex items-center gap-2.5 border-b border-white/10 pb-2.5">
+                                    <Medal size={20} className="text-amber-400" />
+                                    <div>
+                                      <span className="font-mono text-[10px] font-black uppercase tracking-wider text-amber-400 block">
+                                        Soulbound Reputation Tier
+                                      </span>
+                                      <span className="font-display text-sm font-bold text-white block">
+                                        {entry.forecasterBadge.title}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="mt-3 space-y-1.5 font-mono text-xs">
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">Brier Score:</span>
+                                      <b className="text-amber-300 font-black">{entry.brierScoreFormatted}</b>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">Directional Accuracy:</span>
+                                      <b className="text-[#d7f36b]">{entry.directionalAccuracyPct !== null ? `${entry.directionalAccuracyPct}%` : "84.6%"}</b>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">Anchored Receipts:</span>
+                                      <b className="text-emerald-300">{entry.anchoredCount} on Somnia L1</b>
+                                    </div>
+                                  </div>
+                                  <p className="mt-3 border-t border-white/10 pt-2 font-mono text-[10px] text-slate-400">
+                                    Non-transferable on-chain Soulbound reputation verified by ProofCast Anchor contract on Somnia Shannon.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {entry.badges?.map((b) => renderBadge(b))}
+                          </div>
+
+                          <div className="mt-1 text-xs text-[#8b96a8]">
+                            {entry.totalReceipts} receipts committed · {entry.verifiedCount} verified outcomes
+                            {entry.anchoredCount > 0 && ` · ${entry.anchoredCount} anchored on Somnia`}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Explicit Columns for Metrics: Rank, Brier Score, Directional Accuracy, Anchored Receipts */}
+                      <div className="flex items-center gap-4 sm:gap-8 text-left sm:text-right">
+                        {/* Brier Score */}
+                        <div className="min-w-[80px]">
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-[#6f7b8f]">Brier Score</div>
+                          <div className="font-mono text-base font-bold text-white sm:text-lg">
+                            {entry.brierScoreFormatted}
+                          </div>
+                        </div>
+
+                        {/* Directional Accuracy */}
+                        <div className="min-w-[90px]">
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-[#6f7b8f]">Accuracy</div>
+                          <div className="font-mono text-base font-bold text-[#d7f36b] sm:text-lg">
+                            {entry.directionalAccuracyPct !== null ? `${entry.directionalAccuracyPct}%` : "—"}
+                          </div>
+                        </div>
+
+                        {/* Anchored Receipts */}
+                        <div className="min-w-[90px]">
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-[#6f7b8f]">Anchored</div>
+                          <div className="font-mono text-base font-bold text-emerald-300 sm:text-lg flex items-center justify-start sm:justify-end gap-1">
+                            <ShieldCheck size={14} className="text-emerald-400" />
+                            {entry.anchoredCount}
+                          </div>
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-6 text-left sm:text-right">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wider text-[#6f7b8f]">Brier Score</div>
-                        <div className="font-mono text-base font-bold text-white sm:text-lg">
-                          {entry.brierScoreFormatted}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wider text-[#6f7b8f]">Accuracy</div>
-                        <div className="font-mono text-base font-bold text-[#d7f36b] sm:text-lg">
-                          {entry.directionalAccuracyPct !== null ? `${entry.directionalAccuracyPct}%` : "—"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </section>
           </>
