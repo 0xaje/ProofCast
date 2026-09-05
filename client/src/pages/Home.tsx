@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   History,
   Cpu,
+  Clock,
 } from "lucide-react";
 import { SignalShell, StatusChip } from "@/components/SignalShell";
 import { ProofReplayModal, type CompletedProofItem } from "@/components/ProofReplayModal";
@@ -420,8 +421,8 @@ export default function Home() {
                           <span className="h-1.5 w-1.5 rounded-full bg-[#c8f06a] animate-pulse" />
                           {m.asset} / SOMNIA
                         </span>
-                        <span className="font-mono text-[11px] font-bold text-white/80 bg-black/40 px-2 py-0.5 rounded border border-white/10">
-                          ⏱ {timeLabel(m.secondsToExpiry)} left
+                        <span className="font-mono text-[11px] font-bold text-white/80 bg-black/40 px-2 py-0.5 rounded border border-white/10 flex items-center gap-1">
+                          <Clock size={11} className="text-[#c8f06a]" /> {timeLabel(m.secondsToExpiry)} left
                         </span>
                       </div>
                       <h4 className="mt-3 font-display text-sm font-bold leading-snug text-white group-hover:text-[#c8f06a] transition">

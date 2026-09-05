@@ -15,15 +15,18 @@ import {
   Zap,
   Scale,
   ShieldCheck,
+  ExternalLink,
+  Clock,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
+import { parseEther } from "viem";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import { AnimatedComparisonBar } from "@/components/AnimatedComparisonBar";
 import { SignalShell, StatusChip } from "@/components/SignalShell";
 import { ModelComparisonSelector } from "@/components/ModelComparisonSelector";
-import { PROOFCAST_ANCHOR_CONTRACT } from "@/lib/web3/somnia";
+import { PROOFCAST_ANCHOR_CONTRACT, anchorReceiptToSomniaChain } from "@/lib/web3/somnia";
 import type { ModelId } from "../../../server/eventforge/models/types";
 import type { DreamDexMarketSnapshot } from "../../../server/dreamdex";
 import { trpc } from "@/lib/trpc";
@@ -60,6 +63,13 @@ export default function MarketDecision() {
   const commitReceipt = trpc.receipts.create.useMutation({
     onSuccess: async () => {
       await utils.receipts.listMine.invalidate();
+    },
+  });
+
+  const anchorReceiptMutation = trpc.receipts.anchor.useMutation({
+    onSuccess: async () => {
+      await utils.receipts.listMine.invalidate();
+      await utils.receipts.metrics.invalidate();
     },
   });
 
@@ -118,6 +128,9 @@ function findBestLiveMarket(
 
   const [selectedModelId, setSelectedModelId] = useState<ModelId>("ensemble-oracle");
   const [stakeAmount, setStakeAmount] = useState<number>(0);
+  const [committedReceipt, setCommittedReceipt] = useState<any | null>(null);
+  const [isAnchoringOnChain, setIsAnchoringOnChain] = useState(false);
+  const [anchorTxHash, setAnchorTxHash] = useState<string | null>(null);
   const [autoFillIndex, setAutoFillIndex] = useState(0);
   const [streamingReasoning, setStreamingReasoning] = useState<{ [key: string]: string }>({});
   const [isStreaming, setIsStreaming] = useState(false);
@@ -261,6 +274,64 @@ function findBestLiveMarket(
 
   const canReview = thesis.trim().length > 0 && counterThesis.trim().length > 0;
 
+  const handleAnchorOnChain = async (targetReceipt: any) => {
+    if (!targetReceipt) return;
+    const receiptHash = targetReceipt.commitmentHash;
+    if (!receiptHash) {
+      toast.error("Receipt has no cryptographic commitment hash to anchor.");
+      return;
+    }
+    const marketId = targetReceipt.marketSnapshot?.marketId || market?.marketId || "SOMNIA_EVENT_MARKET";
+    const stakeWei = targetReceipt.stakeAmountWei ? BigInt(targetReceipt.stakeAmountWei) : 0n;
+
+    setIsAnchoringOnChain(true);
+    const toastId = toast.loading(
+      stakeWei > 0n
+        ? `Prompting wallet to anchor & transfer ${stakeAmount} STT on Somnia…`
+        : "Prompting wallet signature for Somnia L1 anchor…"
+    );
+
+    try {
+      const { txHash, callerAddress } = await anchorReceiptToSomniaChain(
+        receiptHash,
+        marketId,
+        stakeWei
+      );
+
+      setAnchorTxHash(txHash);
+      toast.loading("Broadcasting anchor transaction to Somnia Shannon L1…", { id: toastId });
+
+      await anchorReceiptMutation.mutateAsync({
+        receiptId: targetReceipt.id,
+        anchorTxHash: txHash,
+        anchorAddress: callerAddress,
+      });
+
+      setCommittedReceipt((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              anchorTxHash: txHash,
+              anchorAddress: callerAddress,
+              stakeStatus: stakeWei > 0n ? "STAKED" : "NONE",
+            }
+          : prev
+      );
+
+      toast.success(
+        stakeWei > 0n
+          ? `Anchored on Somnia Shannon! Tx: ${txHash.slice(0, 10)}… (${stakeAmount} STT staked on-chain)`
+          : `Anchored on Somnia Shannon! Tx: ${txHash.slice(0, 10)}…`,
+        { id: toastId }
+      );
+    } catch (err: any) {
+      const msg = err?.message || "On-chain anchoring declined or failed";
+      toast.error(msg, { id: toastId });
+    } finally {
+      setIsAnchoringOnChain(false);
+    }
+  };
+
   const handleCommit = async () => {
     if (!market) return;
     if (!auth.isAuthenticated && !wallet.address) {
@@ -276,27 +347,38 @@ function findBestLiveMarket(
 
     if (wallet.isConnected && wallet.address) {
       signerAddress = wallet.address;
-      const sig = await wallet.signForecastCommitment({
-        marketId: market.marketId,
-        direction: side,
-        probabilityBps: forecast * 100,
-        confidence,
-        thesis: thesis.trim(),
-        counterThesis: counterThesis.trim(),
-        timestamp: nowTimestamp,
-      });
-      if (sig) {
-        signature = sig;
+      try {
+        const sig = await wallet.signForecastCommitment({
+          marketId: market.marketId,
+          direction: side,
+          probabilityBps: Math.round(forecast * 100),
+          confidence,
+          thesis: thesis.trim(),
+          counterThesis: counterThesis.trim(),
+          timestamp: nowTimestamp,
+        });
+        if (sig) {
+          signature = sig;
+        }
+      } catch (err: any) {
+        console.warn("Wallet commitment signature was skipped or rejected:", err);
       }
     }
 
-    const stakeWei = stakeAmount > 0 ? (BigInt(stakeAmount) * 10n ** 18n).toString() : undefined;
+    let stakeWei: string | undefined = undefined;
+    if (stakeAmount > 0) {
+      try {
+        stakeWei = parseEther(stakeAmount.toString()).toString();
+      } catch {
+        stakeWei = (BigInt(Math.floor(stakeAmount)) * 10n ** 18n).toString();
+      }
+    }
 
-    commitReceipt.mutate(
-      {
+    try {
+      const newReceipt = await commitReceipt.mutateAsync({
         marketId: market.marketId,
         direction: side,
-        probabilityBps: forecast * 100,
+        probabilityBps: Math.round(forecast * 100),
         confidence,
         thesis: thesis.trim(),
         counterThesis: counterThesis.trim(),
@@ -304,12 +386,26 @@ function findBestLiveMarket(
         eip712Signature: signature,
         commitmentTimestamp: signature ? nowTimestamp : undefined,
         stakeAmountWei: stakeWei,
-      },
-      {
-        onSuccess: () => setStage("COMMITTED"),
-        onError: error => setCommitError(error.message),
+      });
+
+      setCommittedReceipt(newReceipt);
+      setStage("COMMITTED");
+
+      toast.success("Decision receipt frozen & committed!", {
+        description:
+          stakeAmount > 0
+            ? `Receipt #${newReceipt.id} created with SHA-256 evidence digest & ${stakeAmount} STT conviction intention.`
+            : `Receipt #${newReceipt.id} created with SHA-256 evidence digest.`,
+      });
+
+      if (wallet.isConnected && wallet.address && stakeAmount > 0) {
+        await handleAnchorOnChain(newReceipt);
       }
-    );
+    } catch (error: any) {
+      const msg = error?.message || "Failed to commit decision receipt";
+      setCommitError(msg);
+      toast.error(msg);
+    }
   };
 
   return (
@@ -942,15 +1038,96 @@ function findBestLiveMarket(
                       )}
                     </div>
                   ) : (
-                    <div className="pi-committed-card rounded-xl border border-[#c8f06a]/40 bg-[#121820] p-5 text-center space-y-3" data-testid="receipt-committed">
-                      <FileCheck2 size={28} className="mx-auto text-[#c8f06a]" />
-                      <b className="block text-base text-white">Your Decision Receipt is Frozen.</b>
-                      <p className="text-xs text-[#a09e96] leading-relaxed">
-                        Receipt saved with server-captured market snapshot and EventForge model metrics. Once DreamDEX resolves, your Brier score will automatically calibrate.
-                      </p>
-                      <Link href="/proof" className="pi-action full mt-3">
-                        Inspect in Proof Profile <ArrowUpRight size={15} />
-                      </Link>
+                    <div className="pi-committed-card rounded-xl border border-[#c8f06a]/40 bg-[#121820] p-5 text-center space-y-4" data-testid="receipt-committed">
+                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#c8f06a]/15 text-[#c8f06a] border border-[#c8f06a]/30">
+                        <FileCheck2 size={24} />
+                      </div>
+                      <div>
+                        <b className="block text-base text-white">Your Decision Receipt is Frozen.</b>
+                        <p className="mt-1 text-xs text-[#a09e96] leading-relaxed">
+                          Receipt {committedReceipt?.id ? `#${committedReceipt.id}` : ""} captured with server-verified market snapshot and SHA-256 evidence digest.
+                        </p>
+                      </div>
+
+                      {/* On-Chain Somnia Anchor Status */}
+                      <div className="rounded-xl border border-white/10 bg-black/50 p-3.5 text-left space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#8e8c84]">
+                            Somnia Shannon Anchor
+                          </span>
+                          {(committedReceipt?.anchorTxHash || anchorTxHash) ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-950/60 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300">
+                              <ShieldCheck size={11} /> Anchored On-Chain
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-950/60 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300">
+                              <Clock size={11} /> Ready to Anchor
+                            </span>
+                          )}
+                        </div>
+
+                        {(committedReceipt?.anchorTxHash || anchorTxHash) ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs font-mono">
+                              <span className="text-[#8e8c84]">Transaction:</span>
+                              <a
+                                href={`https://shannon-explorer.somnia.network/tx/${committedReceipt?.anchorTxHash || anchorTxHash}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 font-bold text-[#c8f06a] hover:underline"
+                              >
+                                {(committedReceipt?.anchorTxHash || anchorTxHash)?.slice(0, 10)}…{(committedReceipt?.anchorTxHash || anchorTxHash)?.slice(-8)}
+                                <ExternalLink size={11} />
+                              </a>
+                            </div>
+                            {stakeAmount > 0 && (
+                              <div className="flex items-center justify-between text-xs font-mono">
+                                <span className="text-[#8e8c84]">Conviction Stake:</span>
+                                <span className="font-bold text-white">{stakeAmount} STT (Secured on Somnia)</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-[11px] text-[#8e8c84] leading-normal">
+                              {stakeAmount > 0
+                                ? `Anchor this receipt on Somnia Shannon Testnet to record the hash on L1 and transfer your ${stakeAmount} STT stake to the conviction pool.`
+                                : "Anchor this receipt on Somnia Shannon Testnet to permanently secure its pre-settlement cryptographic hash on L1."}
+                            </p>
+                            <button
+                              type="button"
+                              disabled={isAnchoringOnChain || anchorReceiptMutation.isPending}
+                              onClick={() => handleAnchorOnChain(committedReceipt)}
+                              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-2.5 px-4 font-mono text-xs font-bold text-black shadow-lg transition hover:brightness-110 active:scale-98 disabled:opacity-60 cursor-pointer"
+                            >
+                              <ShieldCheck size={14} />
+                              {isAnchoringOnChain
+                                ? "Anchoring on Somnia L1…"
+                                : stakeAmount > 0
+                                ? `Anchor to Somnia Now (${stakeAmount} STT)`
+                                : "Anchor to Somnia Now"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Links */}
+                      <div className="space-y-2 pt-1">
+                        <Link href="/proof" className="pi-action full flex items-center justify-center gap-2">
+                          Inspect in Proof Profile <ArrowUpRight size={15} />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStage("DRAFT");
+                            setCommittedReceipt(null);
+                            setAnchorTxHash(null);
+                          }}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 py-2 font-mono text-xs text-white/70 hover:text-white hover:bg-white/10 transition"
+                        >
+                          + Create Another Forecast
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

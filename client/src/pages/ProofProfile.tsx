@@ -527,7 +527,7 @@ export default function ProofProfile() {
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 rounded-lg border border-amber-500/40 bg-amber-950/60 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300">
-                                  ⏱ Active Decision Window
+                                  <Clock3 size={11} /> Active Decision Window
                                 </span>
                               )}
                             </div>
