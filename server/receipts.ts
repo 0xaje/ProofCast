@@ -474,6 +474,26 @@ export async function createDecisionReceipt(
   }
 
   const result = await db.transaction(async tx => {
+    // Ensure the user exists in database to satisfy foreign key constraints
+    try {
+      if (typeof (tx as any).select === "function") {
+        const userRow = await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+        if (!userRow.length) {
+          const fallbackOpenId = input.signerAddress?.toLowerCase() || `user_${userId}`;
+          const shortName = input.signerAddress ? `${input.signerAddress.slice(0, 6)}…${input.signerAddress.slice(-4)}` : `Operator ${userId}`;
+          await tx.insert(users).values({
+            id: userId,
+            openId: fallbackOpenId,
+            name: shortName,
+            loginMethod: "web3-wallet",
+            role: "user",
+          }).onDuplicateKeyUpdate({ set: { lastSignedIn: new Date() } });
+        }
+      }
+    } catch (userErr) {
+      console.warn("[Receipts] User existence check warning:", userErr);
+    }
+
     const snapshotResult = await tx.insert(marketSnapshots).values(buildMarketSnapshotInsert(snapshot, market));
     const marketSnapshotId = insertId(snapshotResult);
     
