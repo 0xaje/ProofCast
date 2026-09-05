@@ -134,6 +134,6 @@ User Intent → Pre-flight Verification → Executable Price (Net of Spread) →
 ## SECTION 7 — FEATURE FREEZE CONFIRMATION
 
 ### Current Quality Gate Status:
-* **Automated Unit & Integration Tests**: **42 / 42 Passed** (`npx vitest run`)
-* **TypeScript Typechecking**: **0 Errors / 0 Diagnostics** (`npx tsc --noEmit`)
+* **Automated Unit & Integration Tests**: **60 / 60 Passed across 10 test suites** (`npm test` / `vitest run`)
+* **TypeScript Typechecking**: **0 Errors / 0 Diagnostics** (`npm run check` / `tsc --noEmit`)
 * **Production Build**: **Cleanly Built** (`npm run build`)

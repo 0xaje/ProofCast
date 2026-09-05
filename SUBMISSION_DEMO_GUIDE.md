@@ -87,8 +87,8 @@ flowchart LR
 
 ## 4. Verification & Health Summary
 
-* **Unit & Integration Suite**: **42 / 42 Tests Passed** (`npx vitest run`)
-* **TypeScript Compilation**: **0 Diagnostics / 0 Errors** (`npx tsc --noEmit`)
+* **Unit & Integration Suite**: **60 / 60 Tests Passed across 10 suites** (`npm test` / `vitest run`)
+* **TypeScript Compilation**: **0 Diagnostics / 0 Errors** (`npm run check` / `tsc --noEmit`)
 * **Production Build**: **Successful** (`npm run build`)
 * **Reality Audit Artifact**: [LIVE_SYSTEM_VERIFICATION.md](file:///home/oyeolorun/ProofCast/LIVE_SYSTEM_VERIFICATION.md)
 
