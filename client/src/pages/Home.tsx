@@ -332,20 +332,42 @@ export default function Home() {
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c8f06a]">
                   <span className="h-2 w-2 rounded-full bg-[#c8f06a] animate-pulse" /> Decision Loop
                 </div>
-                <span className="font-mono text-[10px] text-[#8b96a8]">3 Core Steps</span>
+                <span className="font-mono text-[10px] text-[#8b96a8]">Somnia Shannon L1</span>
+              </div>
+
+              {/* 3-Stage Illuminated Rail Strip */}
+              <div className="mt-3 rounded-xl border border-white/10 bg-black/40 p-2.5 font-mono text-[11px]">
+                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">
+                  3-Stage Illuminated Rail:
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
+                    01 Observe (Cyan)
+                  </span>
+                  <span className="text-slate-500 font-bold">→</span>
+                  <span className="font-bold text-[#c8f06a] drop-shadow-[0_0_8px_rgba(200,240,106,0.5)]">
+                    02 Commit (Lime)
+                  </span>
+                  <span className="text-slate-500 font-bold">→</span>
+                  <span className="font-bold text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]">
+                    03 Prove (Crimson)
+                  </span>
+                </div>
               </div>
 
               <div className="relative mt-5 space-y-4">
                 {/* Connecting Rail Line */}
-                <div className="absolute left-[17px] top-3 bottom-3 w-0.5 bg-gradient-to-b from-sky-400 via-[#c8f06a] to-rose-400 opacity-20" />
+                <div className="absolute left-[17px] top-3 bottom-3 w-0.5 bg-gradient-to-b from-sky-400 via-[#c8f06a] to-rose-400 opacity-30 shadow-[0_0_10px_rgba(200,240,106,0.3)]" />
 
                 {/* Step 1 */}
                 <div className="relative flex items-start gap-3.5 group">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sky-400/40 bg-sky-400/10 font-mono text-xs font-black text-sky-300 shadow-[0_0_15px_rgba(56,189,248,0.2)]">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sky-400/40 bg-sky-400/15 font-mono text-xs font-black text-sky-300 shadow-[0_0_15px_rgba(56,189,248,0.3)]">
                     01
                   </div>
                   <div>
-                    <b className="font-display text-sm font-bold text-white group-hover:text-sky-300 transition">Observe</b>
+                    <b className="font-display text-sm font-bold text-sky-400 group-hover:text-sky-300 transition">
+                      01 Observe (Cyan)
+                    </b>
                     <p className="text-xs text-[#8b96a8] leading-relaxed mt-0.5">
                       Ingest live DreamDEX market signals, order depth, and transparent spreads.
                     </p>
@@ -354,11 +376,13 @@ export default function Home() {
 
                 {/* Step 2 */}
                 <div className="relative flex items-start gap-3.5 group">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#c8f06a]/40 bg-[#c8f06a]/10 font-mono text-xs font-black text-[#c8f06a] shadow-[0_0_15px_rgba(200,240,106,0.2)]">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#c8f06a]/40 bg-[#c8f06a]/15 font-mono text-xs font-black text-[#c8f06a] shadow-[0_0_15px_rgba(200,240,106,0.3)]">
                     02
                   </div>
                   <div>
-                    <b className="font-display text-sm font-bold text-white group-hover:text-[#c8f06a] transition">Commit</b>
+                    <b className="font-display text-sm font-bold text-[#c8f06a] group-hover:text-[#d8fa7a] transition">
+                      02 Commit (Lime)
+                    </b>
                     <p className="text-xs text-[#8b96a8] leading-relaxed mt-0.5">
                       Challenge beliefs with EventForge AI & freeze immutable SHA-256 evidence.
                     </p>
@@ -367,11 +391,13 @@ export default function Home() {
 
                 {/* Step 3 */}
                 <div className="relative flex items-start gap-3.5 group">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-400/40 bg-rose-400/10 font-mono text-xs font-black text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.2)]">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-400/40 bg-rose-400/15 font-mono text-xs font-black text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]">
                     03
                   </div>
                   <div>
-                    <b className="font-display text-sm font-bold text-white group-hover:text-rose-300 transition">Prove</b>
+                    <b className="font-display text-sm font-bold text-rose-400 group-hover:text-rose-300 transition">
+                      03 Prove (Crimson)
+                    </b>
                     <p className="text-xs text-[#8b96a8] leading-relaxed mt-0.5">
                       Verify Brier score calibration ($BS = (f - o)^2$) when the event contract resolves.
                     </p>
@@ -380,12 +406,27 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-6 border-t border-white/10 pt-4">
+            <div className="mt-6 border-t border-white/10 pt-4 space-y-3">
+              {/* Deployed Contract */}
+              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-[11px] font-mono">
+                <span className="text-slate-400">Deployed Contract:</span>
+                <a
+                  href="https://shannon-explorer.somnia.network/address/0xe7daA8b21A1c4a04F038b375b42d131f4963d18e"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-white hover:text-[#c8f06a] transition"
+                >
+                  ProofCastAnchor.sol (0xe7da...d18e)
+                </a>
+              </div>
+
+              {/* Final CTA button */}
               <Link
                 href="/market"
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-white/10 to-white/5 border border-white/15 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition hover:border-[#c8f06a]/50 hover:bg-[#c8f06a]/10 hover:text-[#c8f06a] active:scale-[0.98]"
+                id="launch-app-final-cta"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#c8f06a] px-4 py-3 text-sm font-bold uppercase tracking-wider text-[#151515] transition hover:bg-[#d8fa7a] shadow-[0_0_25px_rgba(200,240,106,0.35)] active:scale-[0.98]"
               >
-                Launch Decision Surface <ArrowUpRight size={14} />
+                Launch App ↗
               </Link>
             </div>
           </aside>
