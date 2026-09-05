@@ -320,7 +320,7 @@ export async function getDreamDexSnapshot(limit = 6): Promise<DreamDexSnapshot> 
       }
 
       console.warn("[DreamDEX] Live Event Contract snapshot unavailable", error instanceof Error ? error.message : error);
-      return unavailableSnapshot("DreamDEX did not return a verified Event Contract snapshot. The interface is withholding market values rather than substituting a demo.");
+      return unavailableSnapshot("DreamDEX did not return a verified Event Contract snapshot. The interface is withholding market values rather than substituting unverified data.");
     } finally {
       await exchange.close().catch(() => undefined);
       inFlightSnapshotPromise = null;

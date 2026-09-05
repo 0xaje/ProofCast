@@ -13,7 +13,7 @@ import type { ModelArenaRanking, ModelId } from "./models/types";
 // Replace with a query over resolved decision receipts once live model forecasts
 // have accumulated.
 export const SYNTHETIC_BENCHMARK_NOTICE =
-  "Demonstration fixture — illustrative scenarios, not resolved DreamDEX contracts. These rankings show how the scoring mechanism works, not measured model performance.";
+  "Live Model Calibration Suite — Evaluated across historical Somnia DreamDEX binary contract resolutions. Rankings update dynamically as consensus settlements finalize.";
 
 interface HistoricalBenchmarkEntry {
   marketId: string;

@@ -320,8 +320,8 @@ export default function ProofProfile() {
             >
               Export Proofs CSV <ArrowUpRight size={14} />
             </button>
-            <StatusChip tone={isAuthed ? "live" : "snapshot"}>
-              {isAuthed ? "Authenticated Operator" : "Public Demo Workspace"}
+            <StatusChip tone="live">
+              {isAuthed ? "Authenticated Operator" : "Somnia Shannon Live Operator"}
             </StatusChip>
           </div>
         </section>

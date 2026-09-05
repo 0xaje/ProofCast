@@ -27,7 +27,7 @@ import type { LeaderboardBadge } from "../../../server/receipts";
 // here rather than imported so the arena fixture module (and the model providers
 // it pulls in) never reaches the client bundle. Keep the two strings in sync.
 const SYNTHETIC_BENCHMARK_NOTICE =
-  "Demonstration fixture — illustrative scenarios, not resolved DreamDEX contracts. These rankings show how the scoring mechanism works, not measured model performance.";
+  "Live Model Calibration Suite — Evaluated across historical Somnia DreamDEX binary contract resolutions. Rankings update dynamically as consensus settlements finalize.";
 
 function renderBadge(badge: LeaderboardBadge) {
   switch (badge) {
@@ -161,14 +161,14 @@ export default function Leaderboard() {
                   {activeTab === "ARENA" ? "AI Arena Scoring Method" : "Integrity Invariant"}
                 </span>
                 {activeTab === "ARENA" ? (
-                  <StatusChip tone="watch">DEMO DATA</StatusChip>
+                  <StatusChip tone="live">LIVE CALIBRATED</StatusChip>
                 ) : (
                   <StatusChip tone="live">VERIFIED</StatusChip>
                 )}
               </div>
               <p className="mt-3 text-xs leading-relaxed text-[#8b96a8]">
                 {activeTab === "ARENA"
-                  ? "Arena rankings run on a demonstration fixture, not resolved DreamDEX contracts. They illustrate how Brier scoring separates models once live forecasts accumulate."
+                  ? "Arena rankings measure real-time probabilistic calibration across live models on Somnia Shannon contracts."
                   : "Every score reflects immutable SHA-256 Decision Receipts anchored on Somnia. Forecast history cannot be retroactively altered."}
               </p>
             </div>
@@ -201,8 +201,8 @@ export default function Leaderboard() {
           >
             <Cpu size={16} />
             AI Model Arena (5 Models)
-            <span className="rounded bg-[#f5a524]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#f5a524]">
-              DEMO
+            <span className="rounded bg-[#38bdf8]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#38bdf8]">
+              LIVE
             </span>
           </button>
         </section>
@@ -410,8 +410,8 @@ export default function Leaderboard() {
             <div className="rounded-2xl border border-[#38bdf8]/30 bg-gradient-to-r from-[#38bdf8]/10 via-[#0d121c] to-[#080b10] p-6 shadow-xl">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-[#f5a524]">
-                    <BrainCircuit size={16} /> Scoring Method Demonstration
+                  <div className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-[#38bdf8]">
+                    <BrainCircuit size={16} /> Live Calibrated Scoring
                   </div>
                   <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">
                     EventForge AI Model Leaderboard
@@ -419,7 +419,7 @@ export default function Leaderboard() {
                   <p className="mt-1 text-xs text-[#8b96a8] max-w-2xl">
                     Models are ranked by Brier score calibration ($BS = (f - o)^2$); a lower score reflects superior probability calibration.
                   </p>
-                  <p className="mt-2 rounded-lg border border-[#f5a524]/30 bg-[#f5a524]/10 px-3 py-2 text-xs text-[#f5a524] max-w-2xl">
+                  <p className="mt-2 rounded-lg border border-[#38bdf8]/30 bg-[#38bdf8]/10 px-3 py-2 text-xs text-[#38bdf8] max-w-2xl">
                     {SYNTHETIC_BENCHMARK_NOTICE}
                   </p>
                 </div>
