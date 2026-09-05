@@ -6,6 +6,7 @@
 **The forecasting intelligence & cryptographic accountability layer built natively for Somnia DreamDEX Event Contracts.**
 
 [![Live App](https://img.shields.io/badge/Live_App-proofcast.onrender.com-c8f06a?style=for-the-badge&logo=render&logoColor=080b10)](https://proofcast.onrender.com)
+[![Demo Video](https://img.shields.io/badge/Demo_Video-YouTube-ff0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/U1dPAt1yQfw)
 [![Somnia Network](https://img.shields.io/badge/Network-Somnia_Shannon_Testnet-c8f06a?style=for-the-badge&logo=ethereum&logoColor=080b10)](https://shannon-explorer.somnia.network)
 [![Smart Contract](https://img.shields.io/badge/Solidity-0.8.20_Verified-f04b2f?style=for-the-badge&logo=solidity&logoColor=white)](contracts/ProofCastAnchor.sol)
 [![DreamDEX](https://img.shields.io/badge/DEX-DreamDEX_Event_Contracts-38bdf8?style=for-the-badge&logo=polkadot&logoColor=white)](https://docs.dreamdex.io)
@@ -22,6 +23,13 @@
   │   DreamDEX   │     │  EventForge  │     │   EIP-712    │     │Somnia Anchor │     │ Brier Scores │
   └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
 ```
+
+<br/>
+
+### Official Video Walkthrough
+[![ProofCast Video Walkthrough](https://img.youtube.com/vi/U1dPAt1yQfw/maxresdefault.jpg)](https://youtu.be/U1dPAt1yQfw)
+
+*Click the image above or visit [https://youtu.be/U1dPAt1yQfw](https://youtu.be/U1dPAt1yQfw) to watch the demonstration.*
 
 </div>
 
@@ -356,6 +364,8 @@ pnpm build
 
 ## 10. Hackathon Submission & Resources
 
+* **Official Video Walkthrough**: [https://youtu.be/U1dPAt1yQfw](https://youtu.be/U1dPAt1yQfw)
+* **Live Web Application**: [https://proofcast.onrender.com](https://proofcast.onrender.com)
 * **Live Submission Guide**: [SUBMISSION_DEMO_GUIDE.md](SUBMISSION_DEMO_GUIDE.md)
 * **System Audit**: [LIVE_SYSTEM_VERIFICATION.md](LIVE_SYSTEM_VERIFICATION.md)
 * **Smart Contract**: [contracts/ProofCastAnchor.sol](contracts/ProofCastAnchor.sol)

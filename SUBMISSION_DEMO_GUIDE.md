@@ -2,6 +2,7 @@
 
 **Project Name:** ProofCast  
 **Live Web Application:** [https://proofcast.onrender.com](https://proofcast.onrender.com)  
+**Official Video Walkthrough:** [https://youtu.be/U1dPAt1yQfw](https://youtu.be/U1dPAt1yQfw)  
 **Category:** Somnia Ecosystem / DreamDEX Event Contracts / AI & Accountability  
 **Deployed Contract (Somnia Shannon):** [`0xe7da3a86ab86c3b5a09c992367083f1cec62d18e`](https://shannon-explorer.somnia.network/address/0xe7da3a86ab86c3b5a09c992367083f1cec62d18e)  
 **Core Thesis:** *Predictions are cheap. Proof is not.*
